@@ -63,3 +63,4 @@ O Vite usa `VITE_PORT` (padrão **5173** no `.env`) e faz **proxy** de `/api/*` 
 ## Template PRO (react.architectui.com)
 
 O site [react.architectui.com](https://react.architectui.com/) é o produto **PRO** (ZIP / repositório privado após compra). Depois de baixar o pacote, substitua o conteúdo de `frontend/` pelo do PRO e **reaplique** no `vite.config.*`: `server` e `preview` (porta, `strictPort`, `proxy['/api']`) e `VITE_API_PROXY_TARGET`, para continuar integrado ao Laravel.
+## teste
