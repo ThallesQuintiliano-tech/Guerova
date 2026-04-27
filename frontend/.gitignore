@@ -1,0 +1,38 @@
+# See https://help.github.com/ignore-files/ for more about ignoring files.
+
+#idea
+.idea
+
+# dependencies
+/node_modules
+/.node_modules*
+/node_modules_*
+
+# testing
+/coverage
+/test-results
+/playwright-report
+/playwright/.cache
+
+# production
+/build
+/documentation
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# the project ships with package-lock.json (npm); pnpm/yarn lockfiles
+# only show up when contributors install with an alternate package manager
+pnpm-lock.yaml
+yarn.lock
+
+# upgrade tracking (keep private)
+REACT19_UPGRADE_RECIPE.md
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

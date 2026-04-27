@@ -1,0 +1,225 @@
+@use 'sass:color';
+
+$lm-sidebar: #10172a;
+$lm-sidebar-active: #2563eb;
+$lm-page-bg: #f8fafc;
+$lm-primary: #2563eb;
+$lm-accent: #6366f1;
+
+.leadmaster-mode {
+  .app-main__inner {
+    background: $lm-page-bg;
+    min-height: calc(100vh - 120px);
+  }
+
+  .app-sidebar {
+    background: $lm-sidebar !important;
+
+    .app-sidebar__heading {
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 0.04em;
+    }
+
+    .metismenu-link {
+      color: rgba(255, 255, 255, 0.85);
+
+      .metismenu-icon {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+      }
+
+      &.active {
+        background: $lm-sidebar-active !important;
+        color: #fff !important;
+        border-radius: 10px;
+
+        .metismenu-icon {
+          color: #fff !important;
+        }
+      }
+    }
+
+    .metismenu-container .metismenu-link {
+      color: rgba(255, 255, 255, 0.75);
+    }
+  }
+
+  .app-header {
+    background: #fff !important;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .app-footer {
+    display: none;
+  }
+
+  .lm-header-actions .btn-link {
+    color: #64748b;
+    padding: 0.35rem 0.55rem;
+
+    &:hover {
+      color: $lm-primary;
+      background: #f1f5f9;
+      border-radius: 8px;
+    }
+  }
+
+  .lm-user-pill {
+    text-align: left;
+
+    .lm-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #38bdf8, $lm-primary);
+      color: #fff;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.lm-credits-card {
+  margin: 1rem 0.75rem 0.5rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: color.adjust($lm-sidebar, $lightness: 8%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  h6 {
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .text-muted {
+    color: rgba(255, 255, 255, 0.55) !important;
+    font-size: 0.75rem;
+  }
+
+  .progress {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    margin: 0.5rem 0 0.75rem;
+  }
+
+  .progress-bar {
+    background: #38bdf8;
+  }
+
+  .btn-light {
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 8px;
+  }
+}
+
+.lm-hero-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
+
+  .lm-highlight {
+    color: $lm-accent;
+  }
+}
+
+.lm-card-soft {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+/* Garante área visível + scroll horizontal em grades largas (react-data-table-component) */
+.lm-scraping-datagrid-wrap {
+  overflow-x: auto;
+  min-height: 200px;
+  width: 100%;
+}
+
+.lm-header-typeahead {
+  .rbt-input-main {
+    min-height: 38px;
+  }
+
+  .dropdown-menu {
+    z-index: 1080;
+  }
+}
+
+.lm-kpi-card {
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  h3 {
+    font-weight: 700;
+    color: #0f172a;
+  }
+}
+
+.lm-kanban-col {
+  min-width: 240px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+/* Linha do Kanban: sem overflow próprio (evita quebrar @hello-pangea/dnd) */
+.lm-kanban-dnd-row {
+  width: max-content;
+}
+
+.lm-kanban-droplist {
+  min-height: 120px;
+}
+
+.lm-kanban-drag-handle {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+  line-height: 1;
+
+  &:hover {
+    background: rgba(15, 23, 42, 0.06);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.lm-kanban-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+}
+
+.lm-stepper-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cbd5e1;
+
+  &.done {
+    background: #22c55e;
+  }
+
+  &.active {
+    background: $lm-primary;
+  }
+}
