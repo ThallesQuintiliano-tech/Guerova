@@ -14,6 +14,8 @@ export const LeadMasterNav = [
   { icon: 'pe-7s-chat', label: 'WhatsApp', to: '/leadmaster/whatsapp' },
   { icon: 'pe-7s-graph', label: 'Relatórios', to: '/leadmaster/dashboard' },
   { icon: 'pe-7s-download', label: 'Scraping', to: '/leadmaster/scraping' },
+  { icon: 'pe-7s-graph1', label: 'Score', to: '/leadmaster/score' },
+  { icon: 'pe-7s-shield', label: 'Admin (usuários)', to: '/leadmaster/admin/usuarios' },
   { icon: 'pe-7s-config', label: 'Configurações', to: '/leadmaster/configuracao' },
 ];
 

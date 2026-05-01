@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Row, Col, Card, CardBody, CardTitle, Table, Badge, Button, ButtonGroup } from 'reactstrap';
+import { Row, Col, Card, CardBody, CardTitle, Table, Badge, Button, ButtonGroup, Spinner } from 'reactstrap';
 import {
   LineChart,
   Line,
@@ -23,9 +23,12 @@ import {
   mockListingCohortStats,
   mockQualifiedFunnelMetrics,
 } from './mockData';
+import { useGoogleAdsCampaigns } from './useGoogleAdsCampaigns';
 
 export default function Dashboard() {
   const [compare, setCompare] = useState(false);
+  const { loading: gadsLoading, error: gadsError, connected: gadsConnected, adsCampaigns } = useGoogleAdsCampaigns();
+  const campaignRows = gadsConnected ? adsCampaigns : mockCampaignsAdsManager;
 
   return (
     <div className="p-4">
@@ -251,8 +254,16 @@ export default function Dashboard() {
           <Card className="lm-card-soft">
             <CardBody>
               <CardTitle tag="h6" className="mb-3">
-                Campanhas ativas
+                {gadsConnected ? 'Google Ads (últimos 7 dias)' : 'Campanhas ativas (exemplo)'}
               </CardTitle>
+              {gadsConnected && gadsLoading && (
+                <div className="small text-muted mb-2">
+                  <Spinner size="sm" className="me-1" /> Carregando…
+                </div>
+              )}
+              {gadsConnected && gadsError && (
+                <div className="small text-warning mb-2">{gadsError}</div>
+              )}
               <Table size="sm" borderless className="mb-0 small">
                 <thead>
                   <tr className="text-muted">
@@ -263,20 +274,43 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockCampaignsAdsManager.map((c) => (
-                    <tr key={c.id}>
-                      <td>
-                        <div className="fw-semibold">{c.name}</div>
-                        <Badge color={c.status === 'ACTIVE' ? 'success' : 'secondary'} pill className="me-1">
-                          {c.status}
-                        </Badge>
-                        <span className="text-muted">{c.objective}</span>
+                  {gadsConnected && !gadsLoading && !gadsError && campaignRows.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="text-muted text-center py-3">
+                        Nenhuma campanha com dados no período.
                       </td>
-                      <td>{c.platform}</td>
-                      <td className="text-end">{c.leads7d}</td>
-                      <td className="text-end">R$ {c.cpl.toFixed(2)}</td>
                     </tr>
-                  ))}
+                  )}
+                  {campaignRows.map((c) => {
+                    const isGoogle = c.source === 'google_ads';
+                    const cpl = c.cpl != null ? Number(c.cpl) : null;
+                    return (
+                      <tr key={c.id}>
+                        <td>
+                          <div className="fw-semibold">{c.name}</div>
+                          <Badge
+                            color={
+                              c.status === 'ACTIVE' || c.status === 'ENABLED'
+                                ? 'success'
+                                : c.status === 'PAUSED'
+                                  ? 'warning'
+                                  : 'secondary'
+                            }
+                            pill
+                            className="me-1"
+                          >
+                            {c.status}
+                          </Badge>
+                          <span className="text-muted">{c.objective}</span>
+                        </td>
+                        <td>{c.platform}</td>
+                        <td className="text-end">{c.leads7d}</td>
+                        <td className="text-end">
+                          {cpl != null ? `R$ ${cpl.toFixed(2)}` : isGoogle ? '—' : `R$ ${Number(c.cpl).toFixed(2)}`}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </Table>
             </CardBody>

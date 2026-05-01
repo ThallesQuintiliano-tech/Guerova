@@ -12,6 +12,9 @@ import WhatsApp from './WhatsApp';
 import Scraping from './Scraping';
 import Configuracao from './Configuracao';
 import LeadDetail from './LeadDetail';
+import AdminUsers from './AdminUsers';
+import Score from './Score';
+import RequireSystemAdmin from '../auth/RequireSystemAdmin';
 
 export default function LeadMasterRoutes() {
   return (
@@ -28,8 +31,10 @@ export default function LeadMasterRoutes() {
       <Route path="whatsapp" element={<WhatsApp />} />
       <Route path="scraping" element={<Scraping />} />
       <Route path="configuracao" element={<Configuracao />} />
-      <Route path="" element={<Navigate to="inicio" replace />} />
-      <Route path="*" element={<Navigate to="inicio" replace />} />
+      <Route path="admin/usuarios" element={<RequireSystemAdmin><AdminUsers /></RequireSystemAdmin>} />
+      <Route path="score" element={<RequireSystemAdmin><Score /></RequireSystemAdmin>} />
+      <Route path="" element={<Navigate to="/leadmaster/inicio" replace />} />
+      <Route path="*" element={<Navigate to="/leadmaster/inicio" replace />} />
     </Routes>
   );
 }

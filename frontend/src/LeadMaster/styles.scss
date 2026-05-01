@@ -134,9 +134,39 @@ $lm-accent: #6366f1;
 }
 
 .lm-card-soft {
-  border: none;
+  border: 1px solid var(--bs-border-color-translucent);
   border-radius: 16px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+/* O LeadMaster define muitos backgrounds claros; isso mantém contraste em dark mode */
+[data-bs-theme='dark'] {
+  .leadmaster-mode {
+    .app-main__inner {
+      background: var(--bs-body-bg);
+    }
+  }
+
+  .lm-hero-title {
+    color: var(--bs-body-color);
+  }
+
+  .lm-card-soft {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  }
+
+  .lm-kanban-col {
+    background: var(--bs-tertiary-bg);
+  }
+
+  .lm-kpi-card {
+    border-color: var(--bs-border-color-translucent);
+    h3 {
+      color: var(--bs-body-color);
+    }
+  }
 }
 
 /* Garante área visível + scroll horizontal em grades largas (react-data-table-component) */

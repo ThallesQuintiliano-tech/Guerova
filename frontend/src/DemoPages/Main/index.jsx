@@ -17,6 +17,7 @@ import useDarkModeSync from '../../hooks/useDarkModeSync';
 export default function Main() {
   useDarkModeSync();
   const location = useLocation();
+  const isUserPages = location.pathname.startsWith('/pages/');
   const leadmasterMode = location.pathname.startsWith('/leadmaster');
   const colorScheme = useSelector((s) => s.ThemeOptions.colorScheme);
   const enableFixedHeader = useSelector((s) => s.ThemeOptions.enableFixedHeader);
@@ -27,6 +28,19 @@ export default function Main() {
   const enablePageTabsAlt = useSelector((s) => s.ThemeOptions.enablePageTabsAlt);
 
   const { width, ref } = useResizeDetector();
+
+  // User pages (login/register/forgot) should not show the app shell.
+  if (isUserPages) {
+    return (
+      <Fragment>
+        <div className="app-container">
+          <main id="main-content" className="app-main__inner" tabIndex={-1}>
+            <AppMain />
+          </main>
+        </div>
+      </Fragment>
+    );
+  }
 
   return (
     <Fragment>

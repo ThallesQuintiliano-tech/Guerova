@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import SuspenseFallback from '../Layout/AppMain/SuspenseFallback';
+import RequireAuth from '../auth/RequireAuth';
 
 // Every demo section is code-split so only the routes a user visits pay the
 // bundle cost. When you're starting a new project, delete this file (and the
@@ -36,7 +37,10 @@ export default function demoRoutes() {
       <Route path="/pages/*" element={lazyRoute(UserPages, 'line-scale-party')} />
       <Route path="/apps/*" element={lazyRoute(Applications, 'ball-pulse')} />
       <Route path="/dashboards/*" element={lazyRoute(Dashboards, 'ball-grid-cy')} />
-      <Route path="/leadmaster/*" element={lazyRoute(LeadMaster)} />
+      <Route
+        path="/leadmaster/*"
+        element={<RequireAuth>{lazyRoute(LeadMaster)}</RequireAuth>}
+      />
       <Route path="/" element={<Navigate to="/leadmaster/inicio" replace />} />
     </>
   );

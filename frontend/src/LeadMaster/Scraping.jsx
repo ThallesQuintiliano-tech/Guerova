@@ -2,12 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Row, Col, Card, CardBody, CardTitle, Label, Input, Button, Table, Alert, Spinner } from 'reactstrap';
 import { Link } from 'react-router-dom';
 import DataTable from 'react-data-table-component';
-import {
-  mockScrapingGuide,
-  scrapingOutputFields,
-  scrapingSectors,
-  buildMockScrapingPreview,
-} from './mockData';
+import { scrapingSectors } from './mockData';
 
 function downloadCsv(columns, rows, filename) {
   const sep = ';';
@@ -52,16 +47,16 @@ const tableCustomStyles = {
 };
 
 export default function Scraping() {
-  const [sectorId, setSectorId] = useState('imoveis');
-  const [city, setCity] = useState('São Paulo — SP');
-  const [quantity, setQuantity] = useState(12);
+  const [source, setSource] = useState('osm');
+  const [sectorId, setSectorId] = useState(scrapingSectors?.[0]?.id || 'imoveis');
+  const [city, setCity] = useState('');
+  const [quantity, setQuantity] = useState(10);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState(null);
   const [jobId, setJobId] = useState(null);
+  const [error, setError] = useState(null);
   const [filterText, setFilterText] = useState('');
   const leadsSectionRef = useRef(null);
-
-  const sector = scrapingSectors.find((s) => s.id === sectorId) || scrapingSectors[0];
 
   useEffect(() => {
     if (preview && !loading) {
@@ -69,19 +64,34 @@ export default function Scraping() {
     }
   }, [preview, loading]);
 
-  const runMockScrape = useCallback(() => {
+  const runScrape = useCallback(async () => {
     setLoading(true);
     setPreview(null);
     setJobId(null);
+    setError(null);
     setFilterText('');
-    const id = `mock-${Date.now().toString(36)}`;
-    setTimeout(() => {
-      const data = buildMockScrapingPreview(sectorId, city, quantity);
-      setPreview(data);
-      setJobId(id);
+
+    try {
+      const r = await fetch('/api/scraping/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ source, sectorId, city: city.trim(), quantity }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) {
+        throw new Error(j?.error || `Falha no scraping (HTTP ${r.status})`);
+      }
+      setPreview(j.preview);
+      setJobId(j.preview?.jobId ?? `real-${Date.now().toString(36)}`);
+    } catch (e) {
+      setError(String(e?.message || e));
+    } finally {
       setLoading(false);
-    }, 900);
-  }, [sectorId, city, quantity]);
+    }
+  }, [source, sectorId, city, quantity]);
 
   const filteredRows = useMemo(() => {
     if (!preview?.rows) return [];
@@ -135,16 +145,21 @@ export default function Scraping() {
 
   const onExportCsv = () => {
     if (!preview) return;
-    const safe = preview.sectorLabel.replace(/\s+/g, '-').toLowerCase();
-    downloadCsv(preview.columns, filteredRows, `scraping-internet-mock-${safe}-${filteredRows.length}registros.csv`);
+    const safe = String(preview.sectorLabel || 'segmento').replace(/\s+/g, '-').toLowerCase();
+    downloadCsv(preview.columns, filteredRows, `scraping-internet-real-${safe}-${filteredRows.length}registros.csv`);
   };
+
+  const sector = useMemo(
+    () => scrapingSectors.find((s) => s.id === sectorId) || scrapingSectors[0],
+    [sectorId]
+  );
 
   return (
     <div className="p-4">
-      <h2 className="h4 mb-1">Scraping — dados da internet (simulação)</h2>
+      <h2 className="h4 mb-1">Scraping — dados reais</h2>
       <p className="text-muted small mb-4">
-        <strong>DataGrid</strong> com registros como se tivessem sido <strong>coletados na web</strong> (Google Maps,
-        sites, redes sociais). Tudo é <strong>mock</strong> — sem chamadas reais a APIs ou sites.
+        Selecione a fonte, o segmento e a cidade. OpenStreetMap funciona sem chave; Google Places precisa de chave no
+        backend.
       </p>
 
       <Alert color="light" className="border mb-4 small">
@@ -156,43 +171,63 @@ export default function Scraping() {
         <Col lg={5}>
           <Card className="lm-card-soft">
             <CardBody>
-              <CardTitle tag="h6" className="mb-3">
-                Configurar coleta (simulação)
-              </CardTitle>
+              <CardTitle tag="h6" className="mb-3">Fonte e Segmento</CardTitle>
               <div className="mb-3">
-                <Label>Setor</Label>
-                <Input type="select" value={sectorId} onChange={(e) => setSectorId(e.target.value)}>
-                  {scrapingSectors.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                    </option>
-                  ))}
+                <Label>Fonte</Label>
+                <Input type="select" value={source} onChange={(e) => setSource(e.target.value)}>
+                  <option value="osm">OpenStreetMap (Overpass)</option>
+                  <option value="google">Google Places (API)</option>
                 </Input>
-                <small className="text-muted d-block mt-1">{sector.hint}</small>
+                <small className="text-muted d-block mt-1">
+                  Google é via API oficial (precisa <code>GOOGLE_MAPS_API_KEY</code> no backend).
+                </small>
               </div>
               <div className="mb-3">
-                <Label>Cidade / região</Label>
-                <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ex.: Campinas — SP" />
+                <Label>Digite somente o segmento</Label>
+                {scrapingSectors?.length ? (
+                  <>
+                    <Input type="select" value={sectorId} onChange={(e) => setSectorId(e.target.value)}>
+                      {scrapingSectors.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </Input>
+                    {sector?.hint ? <small className="text-muted d-block mt-1">{sector.hint}</small> : null}
+                  </>
+                ) : null}
+              </div>
+              <div className="mb-3">
+                <Label>Cidade</Label>
+                <Input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Ex.: São Paulo - SP"
+                />
+                <small className="text-muted d-block mt-1">
+                  Se deixar vazio, usa a cidade padrão do backend (<code>SCRAPING_DEFAULT_CITY</code>).
+                </small>
               </div>
               <div className="mb-3">
                 <Label>Quantidade de registros</Label>
                 <Input
                   type="number"
-                  min={3}
+                  min={1}
                   max={40}
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
                 />
-                <small className="text-muted">Até 40 linhas na grade.</small>
+                <small className="text-muted">Limite: até 40 registros.</small>
               </div>
               <div className="d-flex flex-wrap gap-2">
-                <Button color="primary" className="rounded-pill" onClick={runMockScrape} disabled={loading}>
+                <Button color="primary" className="rounded-pill" onClick={runScrape} disabled={loading}>
                   {loading ? (
                     <>
-                      <Spinner size="sm" className="me-2" /> Coletando na web…
+                      <Spinner size="sm" className="me-2" /> Buscando…
                     </>
                   ) : (
-                    'Executar scraping (mock)'
+                    'Executar scraping'
                   )}
                 </Button>
                 {preview && (
@@ -201,6 +236,11 @@ export default function Scraping() {
                   </Button>
                 )}
               </div>
+              {error && (
+                <Alert color="danger" className="small mt-3 mb-0">
+                  Erro ao coletar: <code>{error}</code>
+                </Alert>
+              )}
               {jobId && preview && (
                 <p className="small text-success mt-3 mb-0">
                   Job <code>{jobId}</code> — {preview.shown} registros indexados para <strong>{preview.sectorLabel}</strong>
@@ -217,7 +257,7 @@ export default function Scraping() {
           <Card className="lm-card-soft">
             <CardBody>
               <CardTitle tag="h6" className="mb-3">
-                Campos extraídos (visão geral)
+                O que o scraper tenta extrair
               </CardTitle>
               <Table responsive size="sm" className="mb-0 small">
                 <thead>
@@ -227,19 +267,21 @@ export default function Scraping() {
                   </tr>
                 </thead>
                 <tbody>
-                  {scrapingOutputFields.map((row) => (
-                    <tr key={row.field}>
-                      <td className="fw-semibold">{row.field}</td>
-                      <td className="text-muted">{row.description}</td>
-                    </tr>
-                  ))}
                   <tr>
-                    <td className="fw-semibold">Origem na internet</td>
-                    <td className="text-muted">Tipo de página onde o registro foi “encontrado” (mock).</td>
+                    <td className="fw-semibold">Título da página</td>
+                    <td className="text-muted">Usado como “Empresa / título”.</td>
                   </tr>
                   <tr>
-                    <td className="fw-semibold">URL capturada</td>
-                    <td className="text-muted">Link simulado (Maps, site, Instagram, etc.).</td>
+                    <td className="fw-semibold">E-mail</td>
+                    <td className="text-muted">Links <code>mailto:</code> e texto da página.</td>
+                  </tr>
+                  <tr>
+                    <td className="fw-semibold">Telefone</td>
+                    <td className="text-muted">Padrões comuns de telefone (normalizado para dígitos).</td>
+                  </tr>
+                  <tr>
+                    <td className="fw-semibold">Instagram</td>
+                    <td className="text-muted">Primeiro link encontrado com <code>instagram.com</code>.</td>
                   </tr>
                 </tbody>
               </Table>
@@ -267,21 +309,20 @@ export default function Scraping() {
           {loading && (
             <div className="d-flex align-items-center gap-2 py-5 justify-content-center text-muted">
               <Spinner color="primary" />
-              <span>Coletando leads (simulação)…</span>
+              <span>Buscando empresas…</span>
             </div>
           )}
 
           {!loading && !preview && (
             <p className="text-muted small mb-0 py-4 text-center">
-              Clique em <strong>Executar scraping (mock)</strong> para carregar os leads abaixo nesta grade.
+              Selecione o segmento e clique em <strong>Executar scraping</strong> para preencher a grade.
             </p>
           )}
 
           {!loading && preview && (
             <>
               <p className="small text-muted mb-3">
-                Registros como se tivessem sido encontrados na web (mock). Ordenação, paginação e busca em todas as
-                colunas.
+                Registros carregados. Ordenação, paginação e busca em todas as colunas.
               </p>
               <div className="lm-scraping-datagrid-wrap">
                 <DataTable
@@ -301,7 +342,7 @@ export default function Scraping() {
                   subHeaderComponent={
                     <Input
                       type="search"
-                      placeholder="Filtrar na grade (empresa, URL, e-mail, cidade…)"
+                      placeholder="Filtrar na grade (empresa, e-mail, cidade…)"
                       value={filterText}
                       onChange={(e) => setFilterText(e.target.value)}
                       className="mb-3"
@@ -320,15 +361,13 @@ export default function Scraping() {
       <Card className="lm-card-soft mt-4">
         <CardBody>
           <CardTitle tag="h6" className="mb-3">
-            Como encaixa no produto
+            Observações
           </CardTitle>
-          <ol className="small ps-3 mb-0">
-            {mockScrapingGuide.map((text, i) => (
-              <li key={i} className="mb-2">
-                {text}
-              </li>
-            ))}
-          </ol>
+          <ul className="small ps-3 mb-0">
+            <li className="mb-2">Alguns sites bloqueiam scraping (Cloudflare, bot protection) e podem dar erro/timeout.</li>
+            <li className="mb-2">Prefira páginas públicas e de contato/sobre.</li>
+            <li className="mb-2">Respeite LGPD/termos do site antes de usar os dados.</li>
+          </ul>
         </CardBody>
       </Card>
     </div>
