@@ -3,8 +3,10 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\GoogleAdsApiController;
 use App\Http\Controllers\GoogleAdsOAuthController;
+use App\Http\Controllers\MetaAdsApiController;
 use App\Http\Controllers\ScrapingController;
 use App\Http\Controllers\SerasaDecryptController;
 use App\Http\Controllers\SerasaScoreController;
@@ -57,6 +59,20 @@ Route::middleware(['auth:sanctum', 'account.resolve', 'throttle:30,1'])->group(f
     Route::get('/google-ads/accessible-customers', [GoogleAdsApiController::class, 'accessibleCustomers'])->name('googleAds.accessibleCustomers');
     Route::get('/google-ads/campaigns', [GoogleAdsApiController::class, 'campaigns'])->name('googleAds.campaigns');
     Route::get('/google-ads/search', [GoogleAdsApiController::class, 'search'])->name('googleAds.search');
+
+    // Meta Ads (por conta): token + chamadas à Graph API
+    Route::get('/meta-ads/connection', [MetaAdsApiController::class, 'connection'])->name('metaAds.connection');
+    Route::post('/meta-ads/connection', [MetaAdsApiController::class, 'upsertConnection'])->name('metaAds.connection.upsert');
+    Route::get('/meta-ads/ad-accounts', [MetaAdsApiController::class, 'adAccounts'])->name('metaAds.adAccounts');
+    Route::get('/meta-ads/campaigns', [MetaAdsApiController::class, 'campaigns'])->name('metaAds.campaigns');
+    Route::post('/meta-ads/ad-images', [MetaAdsApiController::class, 'uploadAdImage'])->name('metaAds.adImages.upload');
+    Route::post('/meta-ads/publish', [MetaAdsApiController::class, 'publish'])->name('metaAds.publish');
+
+    // Campanhas internas (briefing + pacote IA)
+    Route::get('/campaigns', [CampaignController::class, 'index'])->name('campaigns.index');
+    Route::post('/campaigns', [CampaignController::class, 'store'])->name('campaigns.store');
+    Route::get('/campaigns/{campaign}', [CampaignController::class, 'show'])->name('campaigns.show');
+    Route::patch('/campaigns/{campaign}', [CampaignController::class, 'update'])->name('campaigns.update');
 });
 
 // Callback (sem auth; valida pelo state cache)
