@@ -1,0 +1,479 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\MetaAdsConnection;
+use App\Services\MetaAdsClient;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use RuntimeException;
+use Throwable;
+
+class MetaAdsApiController extends Controller
+{
+    public function connection(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        $account = $request->attributes->get('account');
+        $conn = MetaAdsConnection::query()->where('account_id', $account->id)->first();
+
+        return response()->json([
+            'ok' => true,
+            'connected' => $conn !== null,
+            'graphVersion' => $conn?->graph_version ?? (string) config('meta_ads.graph_version', 'v21.0'),
+            'adAccountId' => $conn?->ad_account_id,
+            'pageId' => $conn?->page_id,
+            'igUserId' => $conn?->ig_user_id,
+            'pixelId' => $conn?->pixel_id,
+        ]);
+    }
+
+    public function upsertConnection(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        $account = $request->attributes->get('account');
+        $user = $request->user();
+
+        $data = $request->validate([
+            'accessToken' => ['required', 'string', 'min:20'],
+            'graphVersion' => ['nullable', 'string', 'max:20'],
+            'adAccountId' => ['nullable', 'string', 'max:64'],
+            'pageId' => ['nullable', 'string', 'max:64'],
+            'igUserId' => ['nullable', 'string', 'max:64'],
+            'pixelId' => ['nullable', 'string', 'max:64'],
+        ]);
+
+        try {
+            $client = new MetaAdsClient(
+                accessToken: trim((string) $data['accessToken']),
+                graphVersion: trim((string) ($data['graphVersion'] ?? '')) ?: (string) config('meta_ads.graph_version', 'v21.0'),
+            );
+
+            $this->assertTokenHasAdsPermissions($client);
+
+            $adAccountId = trim((string) ($data['adAccountId'] ?? ''));
+            if ($adAccountId !== '') {
+                $this->assertAdAccountLinkedToBusiness($client, $adAccountId);
+            }
+
+            $conn = MetaAdsConnection::query()->updateOrCreate(
+                ['account_id' => $account->id],
+                [
+                    'created_by_user_id' => $user?->id,
+                    'access_token' => trim((string) $data['accessToken']),
+                    'graph_version' => trim((string) ($data['graphVersion'] ?? '')) ?: null,
+                    'ad_account_id' => $adAccountId !== '' ? $adAccountId : null,
+                    'page_id' => trim((string) ($data['pageId'] ?? '')) ?: null,
+                    'ig_user_id' => trim((string) ($data['igUserId'] ?? '')) ?: null,
+                    'pixel_id' => trim((string) ($data['pixelId'] ?? '')) ?: null,
+                ]
+            );
+        } catch (Throwable $e) {
+            report($e);
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'connected' => true,
+            'connection' => [
+                'graphVersion' => $conn->graph_version ?? (string) config('meta_ads.graph_version', 'v21.0'),
+                'adAccountId' => $conn->ad_account_id,
+                'pageId' => $conn->page_id,
+                'igUserId' => $conn->ig_user_id,
+                'pixelId' => $conn->pixel_id,
+            ],
+        ], 201);
+    }
+
+    public function adAccounts(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        try {
+            $conn = $this->requireConnection($request);
+            $client = $this->clientFromConnection($conn);
+            $this->assertTokenHasAdsPermissions($client);
+
+            $limit = (int) $request->query('limit', 100);
+            $limit = max(1, min(200, $limit));
+
+            $resp = $client->get('/me/adaccounts', [
+                'fields' => 'id,name,account_id,account_status,business{id,name}',
+                'limit' => $limit,
+            ]);
+
+            $items = $resp['data'] ?? [];
+            if (! is_array($items)) {
+                $items = [];
+            }
+
+            return response()->json([
+                'ok' => true,
+                'adAccounts' => $items,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+    }
+
+    /**
+     * Faz upload da imagem para a ad account (edge {@code adimages}) e devolve o {@code image_hash}.
+     */
+    public function uploadAdImage(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        try {
+            $conn = $this->requireConnection($request);
+            $adAccountId = $this->requireAdAccountId($request, $conn);
+            $client = $this->clientFromConnection($conn);
+            $this->assertTokenHasAdsPermissions($client);
+            $this->assertAdAccountLinkedToBusiness($client, $adAccountId);
+
+            $request->validate([
+                'file' => ['required', 'file', 'max:10240', 'mimes:jpeg,jpg,png,gif,webp'],
+            ]);
+
+            $uploaded = $request->file('file');
+            if (! $uploaded || ! $uploaded->isValid()) {
+                throw new RuntimeException('Arquivo de imagem inválido ou ausente.');
+            }
+
+            $path = $uploaded->getRealPath();
+            if ($path === false || ! is_readable($path)) {
+                throw new RuntimeException('Não foi possível ler o arquivo enviado.');
+            }
+
+            $contents = file_get_contents($path);
+            if ($contents === false || $contents === '') {
+                throw new RuntimeException('Arquivo de imagem vazio.');
+            }
+
+            $original = $uploaded->getClientOriginalName();
+            $original = $original !== '' ? $original : 'creative.jpg';
+
+            $resp = $client->uploadAdImage($adAccountId, $contents, $original);
+            $hash = MetaAdsClient::imageHashFromAdImagesResponse($resp);
+
+            return response()->json([
+                'ok' => true,
+                'image_hash' => $hash,
+                'adAccountId' => $adAccountId,
+            ], 201);
+        } catch (Throwable $e) {
+            report($e);
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+    }
+
+    public function campaigns(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        try {
+            $conn = $this->requireConnection($request);
+            $adAccountId = $this->requireAdAccountId($request, $conn);
+            $client = $this->clientFromConnection($conn);
+            $this->assertTokenHasAdsPermissions($client);
+            $this->assertAdAccountLinkedToBusiness($client, $adAccountId);
+
+            $limit = (int) $request->query('limit', 50);
+            $limit = max(1, min(200, $limit));
+
+            $resp = $client->get('/'.$this->normalizeAct($adAccountId).'/campaigns', [
+                'fields' => 'id,name,status,effective_status,objective,created_time,updated_time',
+                'limit' => $limit,
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'adAccountId' => $adAccountId,
+                'campaigns' => $resp['data'] ?? [],
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+    }
+
+    /**
+     * Cria campanha + adset + creative + ad na Meta.
+     * Requer: token + ad account + page id (para creative).
+     */
+    public function publish(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        try {
+            $conn = $this->requireConnection($request);
+            $adAccountId = $this->requireAdAccountId($request, $conn);
+            $client = $this->clientFromConnection($conn);
+            $this->assertTokenHasAdsPermissions($client);
+            $this->assertAdAccountLinkedToBusiness($client, $adAccountId);
+
+            $data = $request->validate([
+                'campaign' => ['required', 'array'],
+                'campaign.name' => ['required', 'string', 'max:190'],
+                'campaign.objective' => ['required', 'string', 'max:50'],
+                'campaign.status' => ['nullable', 'string', 'max:30'], // PAUSED | ACTIVE
+                'campaign.special_ad_categories' => ['nullable', 'array'],
+
+                'adset' => ['required', 'array'],
+                'adset.name' => ['required', 'string', 'max:190'],
+                'adset.daily_budget' => ['required', 'integer', 'min:100'], // em centavos (BRL) por padrão
+                'adset.billing_event' => ['nullable', 'string', 'max:50'],
+                'adset.optimization_goal' => ['nullable', 'string', 'max:50'],
+                'adset.bid_strategy' => ['nullable', 'string', 'max:50'],
+                'adset.status' => ['nullable', 'string', 'max:30'],
+                'adset.targeting' => ['required', 'array'],
+                'adset.promoted_object' => ['nullable', 'array'],
+
+                'creative' => ['required', 'array'],
+                'creative.name' => ['nullable', 'string', 'max:190'],
+                'creative.page_id' => ['nullable', 'string', 'max:64'],
+                'creative.ig_user_id' => ['nullable', 'string', 'max:64'],
+                'creative.message' => ['required', 'string', 'max:5000'],
+                'creative.link' => ['required', 'url', 'max:2048'],
+                'creative.headline' => ['nullable', 'string', 'max:255'],
+                'creative.description' => ['nullable', 'string', 'max:255'],
+                'creative.call_to_action_type' => ['nullable', 'string', 'max:100'],
+                'creative.image_hash' => ['required', 'string', 'max:255'],
+
+                'ad' => ['required', 'array'],
+                'ad.name' => ['required', 'string', 'max:190'],
+                'ad.status' => ['nullable', 'string', 'max:30'],
+            ]);
+
+            $pageId = $data['creative']['page_id'] ?? $conn->page_id;
+            if (! $pageId) {
+                throw new RuntimeException('Configure pageId na conexão ou envie creative.page_id.');
+            }
+
+            $igUserId = $data['creative']['ig_user_id'] ?? $conn->ig_user_id;
+            $campaignStatus = strtoupper((string) ($data['campaign']['status'] ?? 'PAUSED'));
+            $adsetStatus = strtoupper((string) ($data['adset']['status'] ?? 'PAUSED'));
+            $adStatus = strtoupper((string) ($data['ad']['status'] ?? 'PAUSED'));
+
+            $campaign = $client->createCampaign($adAccountId, [
+                'name' => $data['campaign']['name'],
+                'objective' => strtoupper((string) $data['campaign']['objective']),
+                'status' => $campaignStatus,
+                'special_ad_categories' => json_encode($data['campaign']['special_ad_categories'] ?? []),
+            ]);
+            $campaignId = (string) ($campaign['id'] ?? '');
+            if ($campaignId === '') {
+                throw new RuntimeException('Falha ao criar campaign (id vazio).');
+            }
+
+            $adsetPayload = [
+                'name' => $data['adset']['name'],
+                'campaign_id' => $campaignId,
+                'daily_budget' => (int) $data['adset']['daily_budget'],
+                'status' => $adsetStatus,
+                'targeting' => json_encode($data['adset']['targeting']),
+            ];
+            if (! empty($data['adset']['billing_event'])) {
+                $adsetPayload['billing_event'] = strtoupper((string) $data['adset']['billing_event']);
+            }
+            if (! empty($data['adset']['optimization_goal'])) {
+                $adsetPayload['optimization_goal'] = strtoupper((string) $data['adset']['optimization_goal']);
+            }
+            if (! empty($data['adset']['bid_strategy'])) {
+                $adsetPayload['bid_strategy'] = strtoupper((string) $data['adset']['bid_strategy']);
+            }
+            if (! empty($data['adset']['promoted_object'])) {
+                $adsetPayload['promoted_object'] = json_encode($data['adset']['promoted_object']);
+            }
+
+            $adset = $client->createAdSet($adAccountId, $adsetPayload);
+            $adsetId = (string) ($adset['id'] ?? '');
+            if ($adsetId === '') {
+                throw new RuntimeException('Falha ao criar adset (id vazio).');
+            }
+
+            $linkData = [
+                'link' => $data['creative']['link'],
+                'message' => $data['creative']['message'],
+                'image_hash' => $data['creative']['image_hash'],
+            ];
+            if (! empty($data['creative']['headline'])) {
+                $linkData['name'] = $data['creative']['headline'];
+            }
+            if (! empty($data['creative']['description'])) {
+                $linkData['description'] = $data['creative']['description'];
+            }
+            if (! empty($data['creative']['call_to_action_type'])) {
+                $linkData['call_to_action'] = [
+                    'type' => strtoupper((string) $data['creative']['call_to_action_type']),
+                ];
+            }
+
+            $objectStorySpec = [
+                'page_id' => (string) $pageId,
+                'link_data' => $linkData,
+            ];
+            if ($igUserId) {
+                $objectStorySpec['instagram_actor_id'] = (string) $igUserId;
+            }
+
+            $creative = $client->createCreative($adAccountId, [
+                'name' => $data['creative']['name'] ?? $data['campaign']['name'].' - Creative',
+                'object_story_spec' => json_encode($objectStorySpec),
+            ]);
+            $creativeId = (string) ($creative['id'] ?? '');
+            if ($creativeId === '') {
+                throw new RuntimeException('Falha ao criar creative (id vazio).');
+            }
+
+            $ad = $client->createAd($adAccountId, [
+                'name' => $data['ad']['name'],
+                'adset_id' => $adsetId,
+                'creative' => json_encode(['creative_id' => $creativeId]),
+                'status' => $adStatus,
+            ]);
+            $adId = (string) ($ad['id'] ?? '');
+            if ($adId === '') {
+                throw new RuntimeException('Falha ao criar ad (id vazio).');
+            }
+
+            return response()->json([
+                'ok' => true,
+                'adAccountId' => $adAccountId,
+                'ids' => [
+                    'campaign_id' => $campaignId,
+                    'adset_id' => $adsetId,
+                    'creative_id' => $creativeId,
+                    'ad_id' => $adId,
+                ],
+            ], 201);
+        } catch (Throwable $e) {
+            report($e);
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+    }
+
+    private function requireConnection(Request $request): MetaAdsConnection
+    {
+        $account = $request->attributes->get('account');
+        $conn = MetaAdsConnection::query()->where('account_id', $account->id)->first();
+        if (! $conn) {
+            throw new RuntimeException('Meta Ads não conectado para esta conta.');
+        }
+
+        return $conn;
+    }
+
+    private function clientFromConnection(MetaAdsConnection $conn): MetaAdsClient
+    {
+        $version = trim((string) ($conn->graph_version ?? '')) ?: (string) config('meta_ads.graph_version', 'v21.0');
+
+        return new MetaAdsClient(
+            accessToken: (string) $conn->access_token,
+            graphVersion: $version,
+        );
+    }
+
+    private function requireAdAccountId(Request $request, MetaAdsConnection $conn): string
+    {
+        $q = trim((string) $request->query('adAccountId', ''));
+        if ($q === '') {
+            $q = trim((string) $request->input('adAccountId', ''));
+        }
+        $id = $q !== '' ? $q : (string) ($conn->ad_account_id ?? '');
+        $id = trim($id);
+        if ($id === '') {
+            throw new RuntimeException('Informe o ad account: query adAccountId ou configure na conexão (adAccountId).');
+        }
+
+        return $id;
+    }
+
+    private function normalizeAct(string $adAccountId): string
+    {
+        $id = trim($adAccountId);
+        if ($id === '') {
+            return $id;
+        }
+        return str_starts_with($id, 'act_') ? $id : 'act_'.$id;
+    }
+
+    private function assertTokenHasAdsPermissions(MetaAdsClient $client): void
+    {
+        $resp = $client->get('/me/permissions');
+        $rows = $resp['data'] ?? [];
+        if (! is_array($rows)) {
+            throw new RuntimeException('Não foi possível validar permissões do token (resposta inesperada).');
+        }
+
+        $granted = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $perm = strtolower((string) ($row['permission'] ?? ''));
+            $status = strtolower((string) ($row['status'] ?? ''));
+            if ($perm !== '' && $status === 'granted') {
+                $granted[$perm] = true;
+            }
+        }
+
+        if (! (isset($granted['ads_management']) || isset($granted['ads_read']))) {
+            throw new RuntimeException('O Access Token precisa de permissões ads_management ou ads_read (status: granted).');
+        }
+    }
+
+    private function assertAdAccountLinkedToBusiness(MetaAdsClient $client, string $adAccountId): void
+    {
+        $act = $this->normalizeAct($adAccountId);
+        $resp = $client->get('/'.$act, [
+            'fields' => 'id,name,account_id,business{id,name}',
+        ]);
+
+        $business = is_array($resp) ? ($resp['business'] ?? null) : null;
+        $bizId = is_array($business) ? trim((string) ($business['id'] ?? '')) : '';
+        if ($bizId === '') {
+            throw new RuntimeException('A conta de anúncio precisa estar vinculada a um Business. Verifique o adAccountId e o Business Manager.');
+        }
+    }
+}
+
