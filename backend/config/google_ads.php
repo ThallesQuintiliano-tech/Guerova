@@ -1,6 +1,8 @@
 <?php
 
 return [
+    // Feature flag: pause Google Ads integration without removing code/routes.
+    'enabled' => env('GOOGLE_ADS_ENABLED', false),
     'client_id' => env('GOOGLE_ADS_CLIENT_ID', ''),
     'client_secret' => env('GOOGLE_ADS_CLIENT_SECRET', ''),
     'developer_token' => env('GOOGLE_ADS_DEVELOPER_TOKEN', ''),

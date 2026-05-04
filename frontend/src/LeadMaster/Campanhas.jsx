@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardBody, CardTitle, Table, Badge, Button, Alert, Spinner } from 'reactstrap';
 import { mockCampaignsAdsManager } from './mockData';
 import { useGoogleAdsCampaigns } from './useGoogleAdsCampaigns';
+import { useInternalCampaigns } from './useInternalCampaigns';
 
 function statusBadgeColor(status) {
   if (status === 'ACTIVE' || status === 'ENABLED') return 'success';
@@ -10,12 +11,25 @@ function statusBadgeColor(status) {
   return 'secondary';
 }
 
+function internalPacoteState(c) {
+  return {
+    briefing: c.briefing,
+    savedPack: c.pack,
+    savedCampaign: { id: c.id, name: c.name, status: c.status },
+  };
+}
+
 export default function Campanhas() {
+  const navigate = useNavigate();
   const { loading, error, connected, adsCampaigns, refetch, startOAuth, connectionInfo } = useGoogleAdsCampaigns();
+  const { loading: loadingInternal, error: errorInternal, campaigns: internalCampaigns, refetch: refetchInternal } =
+    useInternalCampaigns();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { state } = useLocation();
   const [oauthBusy, setOauthBusy] = useState(false);
   const [oauthErr, setOauthErr] = useState(null);
   const [oauthReturnBanner, setOauthReturnBanner] = useState(null);
+  const [savedBanner, setSavedBanner] = useState(false);
 
   useEffect(() => {
     const flag = searchParams.get('google_ads');
@@ -33,6 +47,13 @@ export default function Campanhas() {
       setOauthErr('Não foi possível concluir a ligação ao Google Ads. Tente novamente.');
     }
   }, [searchParams, setSearchParams, refetch]);
+
+  useEffect(() => {
+    if (state?.saved) {
+      setSavedBanner(true);
+      refetchInternal();
+    }
+  }, [state, refetchInternal]);
 
   const showGoogle = connected;
   const tableRows = showGoogle ? adsCampaigns : mockCampaignsAdsManager;
@@ -90,11 +111,107 @@ export default function Campanhas() {
         </Alert>
       )}
 
+      {savedBanner && (
+        <Alert color="success" className="py-2 small" toggle={() => setSavedBanner(false)}>
+          Campanha salva com sucesso.
+        </Alert>
+      )}
+
       {oauthErr && (
         <Alert color="danger" className="py-2 small">
           {oauthErr}
         </Alert>
       )}
+
+      <Card className="lm-card-soft mb-3">
+        <CardBody>
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <CardTitle tag="h6" className="mb-0">
+              Campanhas internas (briefing + pacote)
+            </CardTitle>
+            <Button color="outline-secondary" size="sm" type="button" disabled={loadingInternal} onClick={refetchInternal}>
+              Atualizar
+            </Button>
+          </div>
+          {loadingInternal && (
+            <div className="small text-muted">
+              <Spinner size="sm" className="me-1" /> Carregando campanhas internas…
+            </div>
+          )}
+          {errorInternal && (
+            <Alert color="warning" className="py-2 small mb-0 mt-2">
+              {errorInternal}
+            </Alert>
+          )}
+          {!loadingInternal && !errorInternal && internalCampaigns.length === 0 && (
+            <div className="small text-muted">Nenhuma campanha salva ainda. Crie uma em “+ Nova campanha”.</div>
+          )}
+          {!loadingInternal && !errorInternal && internalCampaigns.length > 0 && (
+            <Table responsive hover className="small align-middle mb-0 mt-2">
+              <thead>
+                <tr>
+                  <th>Campanha</th>
+                  <th>Status</th>
+                  <th>Cidade</th>
+                  <th className="text-end">Criada</th>
+                  <th className="text-end">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {internalCampaigns.map((c) => (
+                  <tr
+                    key={c.id}
+                    role="button"
+                    tabIndex={0}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      navigate('/leadmaster/campanha/pacote', {
+                        state: internalPacoteState(c),
+                      })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate('/leadmaster/campanha/pacote', {
+                          state: internalPacoteState(c),
+                        });
+                      }
+                    }}
+                  >
+                    <td className="fw-semibold text-primary">{c.name}</td>
+                    <td>
+                      <Badge color={statusBadgeColor(c.status)} pill>
+                        {c.status}
+                      </Badge>
+                    </td>
+                    <td className="text-muted">{c?.briefing?.city || '—'}</td>
+                    <td className="text-end text-muted">{String(c.created_at || '').slice(0, 10)}</td>
+                    <td className="text-end" onClick={(e) => e.stopPropagation()}>
+                      {c.status === 'DRAFT' || c.status === 'PAUSED' ? (
+                        <Button
+                          color="primary"
+                          outline
+                          size="sm"
+                          type="button"
+                          onClick={() =>
+                            navigate('/leadmaster/campanha/pacote', {
+                              state: { ...internalPacoteState(c), openPublish: true },
+                            })
+                          }
+                        >
+                          Publicar na Meta
+                        </Button>
+                      ) : (
+                        <span className="small text-muted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </CardBody>
+      </Card>
 
       {!showGoogle && (
         <Alert color="info" className="py-2 small mb-3">

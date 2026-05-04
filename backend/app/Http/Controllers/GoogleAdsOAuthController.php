@@ -16,6 +16,14 @@ class GoogleAdsOAuthController extends Controller
      */
     public function authorizeUrl(Request $request, GoogleAdsOAuth $oauth): JsonResponse
     {
+        if (! (bool) config('google_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Google Ads está pausada no momento.',
+            ], 503);
+        }
+
         try {
             /** @var User $user */
             $user = $request->user();
@@ -30,6 +38,10 @@ class GoogleAdsOAuthController extends Controller
 
     public function start(Request $request, GoogleAdsOAuth $oauth): RedirectResponse
     {
+        if (! (bool) config('google_ads.enabled')) {
+            abort(503, 'Integração com Google Ads está pausada no momento.');
+        }
+
         /** @var User $user */
         $user = $request->user();
         $account = $request->attributes->get('account');
@@ -41,6 +53,12 @@ class GoogleAdsOAuthController extends Controller
 
     public function callback(Request $request, GoogleAdsOAuth $oauth): RedirectResponse
     {
+        if (! (bool) config('google_ads.enabled')) {
+            $origin = rtrim((string) config('google_ads.oauth_frontend_origin'), '/');
+            $campanhas = $origin.'/leadmaster/campanhas';
+            return redirect()->away($campanhas.'?google_ads=error');
+        }
+
         $origin = rtrim((string) config('google_ads.oauth_frontend_origin'), '/');
         $campanhas = $origin.'/leadmaster/campanhas';
 

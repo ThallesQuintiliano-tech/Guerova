@@ -117,13 +117,7 @@ function UserBox() {
                               </Input>
                             </div>
                           </NavItem>
-                        ) : (
-                          <NavItem>
-                            <NavLink href="#" onClick={(e) => e.preventDefault()}>
-                              Preferências de anúncios
-                            </NavLink>
-                          </NavItem>
-                        )}
+                        ) : null}
                         <NavItem className="nav-item-header">Atalhos</NavItem>
                         <NavItem>
                           <NavLink href="#" onClick={(e) => e.preventDefault()}>

@@ -17,6 +17,14 @@ class GoogleAdsApiController extends Controller
 {
     public function connection(Request $request): JsonResponse
     {
+        if (! (bool) config('google_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Google Ads está pausada no momento.',
+            ], 503);
+        }
+
         $account = $request->attributes->get('account');
         $conn = GoogleAdsConnection::query()->where('account_id', $account->id)->first();
 
@@ -30,6 +38,14 @@ class GoogleAdsApiController extends Controller
 
     public function accessibleCustomers(Request $request, GoogleAdsClientFactory $factory): JsonResponse
     {
+        if (! (bool) config('google_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Google Ads está pausada no momento.',
+            ], 503);
+        }
+
         try {
             $account = $request->attributes->get('account');
             $client = $factory->makeForAccount($account);
@@ -59,6 +75,14 @@ class GoogleAdsApiController extends Controller
 
     public function search(Request $request, GoogleAdsClientFactory $factory): JsonResponse
     {
+        if (! (bool) config('google_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Google Ads está pausada no momento.',
+            ], 503);
+        }
+
         try {
             $account = $request->attributes->get('account');
             $conn = GoogleAdsConnection::query()->where('account_id', $account->id)->first();
@@ -138,6 +162,14 @@ class GoogleAdsApiController extends Controller
 
     public function campaigns(Request $request, GoogleAdsClientFactory $factory): JsonResponse
     {
+        if (! (bool) config('google_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Google Ads está pausada no momento.',
+            ], 503);
+        }
+
         try {
             $account = $request->attributes->get('account');
             $conn = GoogleAdsConnection::query()->where('account_id', $account->id)->first();
