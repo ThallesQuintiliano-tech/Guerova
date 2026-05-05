@@ -457,8 +457,31 @@ class MetaAdsApiController extends Controller
             }
         }
 
-        if (! (isset($granted['ads_management']) || isset($granted['ads_read']))) {
-            throw new RuntimeException('O Access Token precisa de permissões ads_management ou ads_read (status: granted).');
+        if (isset($granted['ads_management']) || isset($granted['ads_read'])) {
+            return;
+        }
+
+        // Alguns tokens (ex. utilizador do Business / fluxos fora do Login clássico) funcionam na Marketing API
+        // mas /me/permissions não lista ads_* — prova: leitura de ad accounts.
+        try {
+            $client->get('/me/adaccounts', [
+                'fields' => 'id',
+                'limit' => 1,
+            ]);
+
+            return;
+        } catch (RuntimeException $probe) {
+            $scopes = MetaAdsClient::inferScopesViaDebugToken($client->getAccessToken());
+            $scopesHint = $scopes !== null
+                ? ' Scopes deste token: '.implode(', ', $scopes).'.'
+                : ' (Opcional: META_APP_ID + META_APP_SECRET no .env para listar scopes.)';
+
+            throw new RuntimeException(
+                'O token não tem permissão para anúncios — são necessários ads_read ou ads_management na app.'
+                .$scopesHint
+                .' O que fazer: gerar um novo token (ex. Graph API Explorer) com ads_read, mesma app, utilizador com acesso à ad account.'
+                .' '.$probe->getMessage()
+            );
         }
     }
 

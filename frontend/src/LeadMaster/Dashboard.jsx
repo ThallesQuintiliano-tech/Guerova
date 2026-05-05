@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Row, Col, Card, CardBody, CardTitle, Table, Badge, Button, ButtonGroup, Spinner } from 'reactstrap';
+import { Link } from 'react-router-dom';
+import { Row, Col, Card, CardBody, CardTitle, Table, Badge, Button, ButtonGroup, Spinner, Alert } from 'reactstrap';
 import {
   LineChart,
   Line,
@@ -24,18 +25,35 @@ import {
   mockQualifiedFunnelMetrics,
 } from './mockData';
 import { useGoogleAdsCampaigns } from './useGoogleAdsCampaigns';
+import { useMetaAdsCampaigns } from './useMetaAdsCampaigns';
+
+function statusBadgeColor(status) {
+  if (status === 'ACTIVE' || status === 'ENABLED') return 'success';
+  if (status === 'PAUSED') return 'warning';
+  return 'secondary';
+}
 
 export default function Dashboard() {
   const [compare, setCompare] = useState(false);
   const { loading: gadsLoading, error: gadsError, connected: gadsConnected, adsCampaigns } = useGoogleAdsCampaigns();
+  const {
+    loading: metaLoading,
+    error: metaError,
+    connected: metaConnected,
+    adAccountId: metaAdAccountId,
+    pageId: metaPageId,
+    metaCampaigns,
+    refetch: refetchMeta,
+  } = useMetaAdsCampaigns();
   const campaignRows = gadsConnected ? adsCampaigns : mockCampaignsAdsManager;
 
   return (
     <div className="p-4">
       <h2 className="h4 mb-1">Relatórios e campanhas</h2>
       <p className="text-muted small mb-4">
-        Visão inspirada em relatórios reais (Four Imóveis) + tabela estilo <strong>Meta Ads Manager</strong>, com
-        evolução de <strong>gastos e métricas</strong> da propaganda.
+        Visão inspirada em relatórios reais (Four Imóveis) + gráficos de exemplo. As campanhas <strong>Meta Ads</strong>{' '}
+        reais aparecem no cartão inferior direito quando a conexão está configurada; Google Ads usa OAuth como na página
+        Campanhas.
       </p>
 
       <h3 className="h6 text-uppercase text-muted mb-3">Resumo WhatsApp / Meta (mock)</h3>
@@ -251,70 +269,147 @@ export default function Dashboard() {
           </Card>
         </Col>
         <Col lg={5}>
-          <Card className="lm-card-soft">
-            <CardBody>
-              <CardTitle tag="h6" className="mb-3">
-                {gadsConnected ? 'Google Ads (últimos 7 dias)' : 'Campanhas ativas (exemplo)'}
-              </CardTitle>
-              {gadsConnected && gadsLoading && (
-                <div className="small text-muted mb-2">
-                  <Spinner size="sm" className="me-1" /> Carregando…
-                </div>
-              )}
-              {gadsConnected && gadsError && (
-                <div className="small text-warning mb-2">{gadsError}</div>
-              )}
-              <Table size="sm" borderless className="mb-0 small">
-                <thead>
-                  <tr className="text-muted">
-                    <th>Campanha</th>
-                    <th>Plataforma</th>
-                    <th className="text-end">Leads 7d</th>
-                    <th className="text-end">CPL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {gadsConnected && !gadsLoading && !gadsError && campaignRows.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="text-muted text-center py-3">
-                        Nenhuma campanha com dados no período.
-                      </td>
+          <div className="d-flex flex-column gap-3">
+            <Card className="lm-card-soft">
+              <CardBody>
+                <CardTitle tag="h6" className="mb-3">
+                  {gadsConnected ? 'Google Ads (últimos 7 dias)' : 'Campanhas ativas (exemplo)'}
+                </CardTitle>
+                {gadsConnected && gadsLoading && (
+                  <div className="small text-muted mb-2">
+                    <Spinner size="sm" className="me-1" /> Carregando…
+                  </div>
+                )}
+                {gadsConnected && gadsError && <div className="small text-warning mb-2">{gadsError}</div>}
+                <Table size="sm" borderless className="mb-0 small">
+                  <thead>
+                    <tr className="text-muted">
+                      <th>Campanha</th>
+                      <th>Plataforma</th>
+                      <th className="text-end">Leads 7d</th>
+                      <th className="text-end">CPL</th>
                     </tr>
-                  )}
-                  {campaignRows.map((c) => {
-                    const isGoogle = c.source === 'google_ads';
-                    const cpl = c.cpl != null ? Number(c.cpl) : null;
-                    return (
-                      <tr key={c.id}>
-                        <td>
-                          <div className="fw-semibold">{c.name}</div>
-                          <Badge
-                            color={
-                              c.status === 'ACTIVE' || c.status === 'ENABLED'
-                                ? 'success'
-                                : c.status === 'PAUSED'
-                                  ? 'warning'
-                                  : 'secondary'
-                            }
-                            pill
-                            className="me-1"
-                          >
-                            {c.status}
-                          </Badge>
-                          <span className="text-muted">{c.objective}</span>
-                        </td>
-                        <td>{c.platform}</td>
-                        <td className="text-end">{c.leads7d}</td>
-                        <td className="text-end">
-                          {cpl != null ? `R$ ${cpl.toFixed(2)}` : isGoogle ? '—' : `R$ ${Number(c.cpl).toFixed(2)}`}
+                  </thead>
+                  <tbody>
+                    {gadsConnected && !gadsLoading && !gadsError && campaignRows.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-muted text-center py-3">
+                          Nenhuma campanha com dados no período.
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </Table>
-            </CardBody>
-          </Card>
+                    )}
+                    {campaignRows.map((c) => {
+                      const isGoogle = c.source === 'google_ads';
+                      const cpl = c.cpl != null ? Number(c.cpl) : null;
+                      return (
+                        <tr key={c.id}>
+                          <td>
+                            <div className="fw-semibold">{c.name}</div>
+                            <Badge
+                              color={
+                                c.status === 'ACTIVE' || c.status === 'ENABLED'
+                                  ? 'success'
+                                  : c.status === 'PAUSED'
+                                    ? 'warning'
+                                    : 'secondary'
+                              }
+                              pill
+                              className="me-1"
+                            >
+                              {c.status}
+                            </Badge>
+                            <span className="text-muted">{c.objective}</span>
+                          </td>
+                          <td>{c.platform}</td>
+                          <td className="text-end">{c.leads7d}</td>
+                          <td className="text-end">
+                            {cpl != null ? `R$ ${cpl.toFixed(2)}` : isGoogle ? '—' : `R$ ${Number(c.cpl).toFixed(2)}`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </Table>
+              </CardBody>
+            </Card>
+
+            <Card className="lm-card-soft">
+              <CardBody>
+                <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                  <CardTitle tag="h6" className="mb-0">
+                    Meta Ads — campanhas (Marketing API)
+                  </CardTitle>
+                  <Button color="outline-secondary" size="sm" type="button" disabled={metaLoading} onClick={() => refetchMeta()}>
+                    Atualizar
+                  </Button>
+                </div>
+                {!metaConnected && (
+                  <p className="small text-muted mb-0">
+                    Configure token e ad account em{' '}
+                    <Link to="/leadmaster/configuracao">Configurações</Link>. Métricas de leads/CPL na Meta exigem
+                    insights na API (lista mostra nome, status e objetivo).
+                  </p>
+                )}
+                {metaConnected && !metaAdAccountId && (
+                  <Alert color="warning" className="py-2 small mb-0">
+                    Falta <strong>Ad Account</strong> na conexão Meta.
+                  </Alert>
+                )}
+                {metaConnected && metaAdAccountId && (
+                  <p className="small text-muted mb-2">
+                    <code className="small">{metaAdAccountId}</code>
+                    {metaPageId ? (
+                      <>
+                        {' '}
+                        · Page <code className="small">{metaPageId}</code>
+                      </>
+                    ) : null}
+                  </p>
+                )}
+                {metaLoading && (
+                  <div className="small text-muted">
+                    <Spinner size="sm" className="me-1" /> A carregar…
+                  </div>
+                )}
+                {metaError && (
+                  <Alert color="warning" className="py-2 small mb-0">
+                    {metaError}
+                  </Alert>
+                )}
+                {!metaLoading && !metaError && metaConnected && metaAdAccountId && metaCampaigns.length === 0 && (
+                  <p className="small text-muted mb-0">Nenhuma campanha nesta ad account.</p>
+                )}
+                {!metaLoading && !metaError && metaConnected && metaAdAccountId && metaCampaigns.length > 0 && (
+                  <Table size="sm" responsive className="mb-0 small">
+                    <thead>
+                      <tr className="text-muted">
+                        <th>Campanha</th>
+                        <th>Status</th>
+                        <th>Objetivo</th>
+                        <th className="text-end">Atualizada</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metaCampaigns.map((c) => (
+                        <tr key={c.id}>
+                          <td className="fw-semibold">{c.name || '—'}</td>
+                          <td>
+                            <Badge color={statusBadgeColor(c.effective_status || c.status)} pill>
+                              {c.effective_status || c.status || '—'}
+                            </Badge>
+                          </td>
+                          <td className="text-muted">{c.objective || '—'}</td>
+                          <td className="text-end text-muted">
+                            {c.updated_time ? String(c.updated_time).slice(0, 10) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </CardBody>
+            </Card>
+          </div>
         </Col>
       </Row>
     </div>

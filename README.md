@@ -100,14 +100,35 @@ O ecrã **Lead Master → WhatsApp** mostra o estado da API e um formulário de 
 
 Para **pré-preencher o número de destino** no formulário (só na tua máquina), cria `frontend/.env.local` com `VITE_WHATSAPP_DEFAULT_RECIPIENT=5511…` (ficheiro ignorado pelo Git). Reinicia o `npm run dev` depois de alterar.
 
+## Meta Ads (Marketing API — Lead Master)
+
+O token que usas em **Configurações → Meta Ads** tem de ser um **token de utilizador** (ou de sistema no Business Manager) com permissões de **anúncios** na **mesma** app do Developers. O `WHATSAPP_ACCESS_TOKEN` do `.env` **não** substitui isto: o WhatsApp Cloud API usa outro conjunto de scopes e a Meta devolve `403 (#200) Missing Permissions` em `/me/adaccounts` se colares esse token aqui.
+
+### Obter um token que funcione
+
+1. [developers.facebook.com](https://developers.facebook.com/) → a tua **app** (a que vais usar para Ads).
+2. Garante **função** na app: o teu utilizador Facebook como **Administrador**, **Programador** ou **Tester** (em modo desenvolvimento, só estes utilizadores recebem permissões avançadas sem passar revisão da app).
+3. Em **Casos de utilização** / **Facebook Login** (ou ferramentas de permissões da app), adiciona **`ads_read`** (listar campanhas) ou **`ads_management`** (criar/editar). Em produção, `ads_read` costuma exigir **acesso avançado** após [revisão da app](https://developers.facebook.com/docs/app-review); em desenvolvimento basta o papel na app acima.
+4. Abre o [Graph API Explorer](https://developers.facebook.com/tools/explorer/): no canto superior, escolhe **a mesma app**; em **Permissões do Token de Acesso**, adiciona `ads_read` (e `ads_management` se precisares); clica **Gerar token de acesso** e inicia sessão com o utilizador que tem acesso à **conta de anúncios** no Business Manager.
+5. Cola esse token em **Lead Master → Configurações → Meta Ads** e indica o **Ad Account ID** (`act_…`).
+
+### Opcional no `backend/.env`
+
+- `META_APP_ID` e `META_APP_SECRET` (Definições → **Básico** da app): o backend pode chamar `debug_token` e, em caso de erro, indicar **quais scopes** o token realmente tem (útil para confirmar que não estás a usar token só de WhatsApp). Se for a **mesma** app do WhatsApp, podes usar o mesmo App ID e o mesmo App Secret (não o `WHATSAPP_ACCESS_TOKEN`). Depois: `php artisan config:clear`.
+
+Variáveis gerais: `META_ADS_ENABLED`, `META_GRAPH_VERSION` (ver `backend/.env.example`).
+
 ## Serasa Experian — Anti Fraud Scores
 
 Integração com [Anti Fraud Scores](https://developer.serasaexperian.com.br/api/anti-fraud-scores): o backend obtém token IAM (Basic Auth com `clientId`/`clientSecret`), guarda-o em cache e chama `POST …/people/enrichment` com o CPF e os modelos de score (por defeito `FRAUD_SCORE_PF`).
+
+**Modo mock (desenvolvimento):** com `SERASA_SCORE_USE_MOCK=true` (valor por defeito em `config/serasa.php` se não definires o contrário), a rota **não** chama a Serasa e devolve dados fictícios no mesmo formato. Exemplos de CPF: `39053344705`, `11144477735`, `52998224725`. Em produção com API real, define `SERASA_SCORE_USE_MOCK=false` e as credenciais abaixo.
 
 ### Variáveis no `backend/.env`
 
 Copia do `backend/.env.example`:
 
+- `SERASA_SCORE_USE_MOCK` — `true` para resposta local fictícia; `false` para chamar a API Serasa.
 - `SERASA_IAM_URL` — URL de login IAM (homologação ou produção; há valor UAT por defeito em `config/serasa.php`).
 - `SERASA_SCORES_BASE_URL` — base do produto **sem barra final** (ex.: `https://uat-api.serasaexperian.com.br/anti-fraud-scores/v1`).
 - `SERASA_CLIENT_ID` e `SERASA_CLIENT_SECRET` — credenciais do contrato Serasa.
@@ -128,9 +149,9 @@ Requer utilizador autenticado com **Sanctum** (`Authorization: Bearer <token>`) 
 
 `cpf` aceita máscara; o servidor normaliza para 11 dígitos. `models` é opcional; se omitido ou vazio, usa-se `FRAUD_SCORE_PF`.
 
-Resposta de sucesso (201): `{ "ok": true, "cpf": "…", "result": { … } }` com o JSON devolvido pela API Serasa.
+Resposta de sucesso (201): `{ "ok": true, "cpf": "…", "mock": true|false, "result": { … } }`. O campo `mock` indica se a resposta veio do gerador local. Com API real, `result` é o JSON da Serasa; em mock, inclui `mockMeta` e scores com texto indicativo.
 
-Se `SERASA_SCORES_BASE_URL` ou as credenciais estiverem em falta, o backend responde com erro em tempo de execução (mensagem explícita no corpo ou log).
+Se `SERASA_SCORE_USE_MOCK` for `false` e `SERASA_SCORES_BASE_URL` ou as credenciais estiverem em falta, o backend responde com erro em tempo de execução (mensagem explícita no corpo ou log).
 
 ### Descriptografar documento de teste (massa Experian)
 

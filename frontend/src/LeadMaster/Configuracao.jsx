@@ -60,6 +60,16 @@ export default function Configuracao() {
           <CardTitle tag="h6" className="mb-3">
             Meta Ads (Marketing API)
           </CardTitle>
+          <Alert color="info" className="py-2 small mb-3">
+            <strong>Token diferente do WhatsApp.</strong> O access token da Cloud API (WhatsApp) não tem permissões de anúncios.
+            Gera um token no{' '}
+            <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer">
+              Graph API Explorer
+            </a>{' '}
+            com a <strong>mesma app</strong>, permissão <code>ads_read</code> ou <code>ads_management</code>, e o utilizador
+            que gere a ad account. Em app em modo desenvolvimento, o teu Facebook tem de ser Admin/Developer/Tester da app.
+            Guia no <code>README.md</code> (secção Meta Ads).
+          </Alert>
           {banner && (
             <Alert color={banner.type} className="py-2 small" toggle={() => setBanner(null)}>
               {banner.msg}

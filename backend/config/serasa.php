@@ -26,4 +26,11 @@ return [
     | Solicitação: implantacao@experian.com (CNPJ com contrato ativo).
     */
     'document_decrypt_key' => (string) env('SERASA_DOCUMENT_DECRYPT_KEY', ''),
+
+    /*
+    | Quando true, POST /api/admin/score/people devolve dados fictícios (MockSerasaAntiFraudScores)
+    | e não chama a API Serasa. Use false em produção com credenciais configuradas.
+    */
+    // Padrão true: ambiente local sem credenciais Serasa usa mock. Em produção com API real, defina SERASA_SCORE_USE_MOCK=false.
+    'score_use_mock' => filter_var(env('SERASA_SCORE_USE_MOCK', 'true'), FILTER_VALIDATE_BOOLEAN),
 ];

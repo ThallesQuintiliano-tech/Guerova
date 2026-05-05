@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, Button, Card, CardBody, CardTitle, Col, Input, Label, Row, Spinner, Table } from 'reactstrap';
 import { useAuth } from '../auth/AuthContext';
+import CreditScoreGauge from './CreditScoreGauge';
 
 const onlyDigits = (s) => String(s || '').replace(/\D+/g, '');
 
@@ -36,10 +37,19 @@ export default function Score() {
 
   const enrichments = Array.isArray(data?.result?.enrichments) ? data.result.enrichments : [];
   const scores = enrichments[0]?.scores && Array.isArray(enrichments[0].scores) ? enrichments[0].scores : [];
+  const isMock = Boolean(data?.mock);
 
   return (
     <div className="p-4">
-      <h2 className="h4 mb-3">Score — Serasa Experian (Anti Fraud Scores)</h2>
+      <h2 className="h4 mb-3">Score — Anti Fraud Scores</h2>
+
+      {isMock && (
+        <Alert color="warning" className="small mb-3">
+          <strong>Modo mock ativo.</strong> Os valores são fictícios para desenvolvimento. Exemplos de CPF:{' '}
+          <code>39053344705</code> (bom), <code>11144477735</code> (médio), <code>52998224725</code> (fraco). Para Serasa
+          real, defina <code>SERASA_SCORE_USE_MOCK=false</code> e as credenciais no backend.
+        </Alert>
+      )}
 
       {error && (
         <Alert color="danger" className="small">
@@ -91,9 +101,23 @@ export default function Score() {
 
               {data ? (
                 <>
-                  <div className="small text-muted mb-2">
+                  <div className="small text-muted mb-3">
                     CPF consultado: <code>{data.cpf}</code>
                   </div>
+
+                  {scores.length ? (
+                    <div className="lm-score-gauges mb-4">
+                      {scores.map((s, idx) => (
+                        <CreditScoreGauge
+                          key={`${s.model || 'score'}-${idx}`}
+                          scoreValue={s.score}
+                          riskEnum={s.recomendationRiskEnum}
+                          modelLabel={s.model}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+
                   <div className="table-responsive">
                     <Table size="sm" className="mb-0">
                       <thead>
@@ -101,6 +125,7 @@ export default function Score() {
                           <th>Modelo</th>
                           <th>Score</th>
                           <th>Risco</th>
+                          {isMock ? <th>Indicativo (mock)</th> : null}
                         </tr>
                       </thead>
                       <tbody>
@@ -109,11 +134,12 @@ export default function Score() {
                             <td>{s.model}</td>
                             <td>{s.score}</td>
                             <td>{s.recomendationRiskEnum}</td>
+                            {isMock ? <td className="small text-muted">{s.mockHint ?? '—'}</td> : null}
                           </tr>
                         ))}
                         {!scores.length ? (
                           <tr>
-                            <td colSpan={3} className="text-muted">
+                            <td colSpan={isMock ? 4 : 3} className="text-muted">
                               Nenhum score retornado.
                             </td>
                           </tr>

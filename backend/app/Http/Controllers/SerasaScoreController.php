@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\MockSerasaAntiFraudScores;
 use App\Services\SerasaAntiFraudScores;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -9,8 +10,11 @@ use Illuminate\Validation\ValidationException;
 
 class SerasaScoreController extends Controller
 {
-    public function people(Request $request, SerasaAntiFraudScores $serasa): JsonResponse
-    {
+    public function people(
+        Request $request,
+        SerasaAntiFraudScores $serasa,
+        MockSerasaAntiFraudScores $mockSerasa,
+    ): JsonResponse {
         $data = $request->validate([
             'cpf' => ['required', 'string'],
             // opcional: permite escolher modelos no futuro
@@ -32,11 +36,19 @@ class SerasaScoreController extends Controller
             $models = ['FRAUD_SCORE_PF'];
         }
 
-        $result = $serasa->peopleEnrichment($cpfDigits, $models);
+        $useMock = (bool) config('serasa.score_use_mock');
+
+        if ($useMock) {
+            $result = $mockSerasa->peopleEnrichment($cpfDigits, $models);
+        } else {
+            // Integração real Serasa Experian (IAM + Anti Fraud Scores)
+            $result = $serasa->peopleEnrichment($cpfDigits, $models);
+        }
 
         return response()->json([
             'ok' => true,
             'cpf' => $cpfDigits,
+            'mock' => $useMock,
             'result' => $result,
         ], 201);
     }

@@ -253,3 +253,115 @@ $lm-accent: #6366f1;
     background: $lm-primary;
   }
 }
+
+/* Score PF — gauge semicircular (faixas 0–1000) */
+.lm-score-gauges {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.lm-score-gauge {
+  text-align: center;
+  max-width: 420px;
+  margin-inline: auto;
+
+  &__visual {
+    position: relative;
+    max-width: 320px;
+    margin: 0 auto -0.5rem;
+  }
+
+  &__svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  &__face {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 78px;
+    height: 78px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid #fff;
+  }
+
+  &__face-inner {
+    font-size: 2.25rem;
+    line-height: 1;
+  }
+
+  &__score-line {
+    margin-top: 1rem;
+    font-weight: 700;
+    font-size: 1.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  &__score-max {
+    font-size: 1.1rem;
+    font-weight: 600;
+    vertical-align: baseline;
+  }
+
+  &__tier-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  &__tier-bar {
+    width: 3px;
+    height: 1.35rem;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  &__tier-range {
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  &__tier-label {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    margin: 0.35rem 0 0.75rem;
+    color: #0f172a;
+  }
+
+  &__desc {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: #475569;
+    margin: 0 auto;
+    max-width: 360px;
+    text-align: center;
+  }
+
+  &__model {
+    font-family: ui-monospace, monospace;
+  }
+}
+
+[data-bs-theme='dark'] {
+  .lm-score-gauge__tier-label {
+    color: var(--bs-body-color);
+  }
+
+  .lm-score-gauge__desc {
+    color: var(--bs-secondary-color);
+  }
+
+  .lm-score-gauge__face {
+    border-color: var(--bs-body-bg);
+  }
+}

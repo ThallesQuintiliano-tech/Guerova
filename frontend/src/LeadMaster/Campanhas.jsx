@@ -4,6 +4,7 @@ import { Card, CardBody, CardTitle, Table, Badge, Button, Alert, Spinner } from 
 import { mockCampaignsAdsManager } from './mockData';
 import { useGoogleAdsCampaigns } from './useGoogleAdsCampaigns';
 import { useInternalCampaigns } from './useInternalCampaigns';
+import { useMetaAdsCampaigns } from './useMetaAdsCampaigns';
 
 function statusBadgeColor(status) {
   if (status === 'ACTIVE' || status === 'ENABLED') return 'success';
@@ -22,6 +23,15 @@ function internalPacoteState(c) {
 export default function Campanhas() {
   const navigate = useNavigate();
   const { loading, error, connected, adsCampaigns, refetch, startOAuth, connectionInfo } = useGoogleAdsCampaigns();
+  const {
+    loading: loadingMeta,
+    error: errorMeta,
+    connected: metaConnected,
+    adAccountId: metaAdAccountId,
+    pageId: metaPageId,
+    metaCampaigns,
+    refetch: refetchMeta,
+  } = useMetaAdsCampaigns();
   const { loading: loadingInternal, error: errorInternal, campaigns: internalCampaigns, refetch: refetchInternal } =
     useInternalCampaigns();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -213,10 +223,96 @@ export default function Campanhas() {
         </CardBody>
       </Card>
 
+      <Card className="lm-card-soft mb-3">
+        <CardBody>
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <CardTitle tag="h6" className="mb-0">
+              Campanhas — Meta Ads (Marketing API)
+            </CardTitle>
+            <Button color="outline-secondary" size="sm" type="button" disabled={loadingMeta} onClick={() => refetchMeta()}>
+              Atualizar
+            </Button>
+          </div>
+          {!metaConnected && (
+            <div className="small text-muted">
+              Ligue o token e a <strong>Ad Account</strong> em{' '}
+              <Link to="/leadmaster/configuracao">Configurações → Meta Ads</Link>. O <strong>Page ID</strong> é usado ao
+              publicar criativos; a listagem abaixo usa a ad account guardada.
+            </div>
+          )}
+          {metaConnected && !metaAdAccountId && (
+            <Alert color="warning" className="py-2 small mb-0">
+              Conexão Meta sem <strong>Ad Account</strong>. Indique o ID da conta de anúncios em Configurações.
+            </Alert>
+          )}
+          {metaConnected && metaAdAccountId && (
+            <div className="small text-muted mb-2">
+              Conta: <code className="small">{metaAdAccountId}</code>
+              {metaPageId ? (
+                <>
+                  {' '}
+                  · Page ID: <code className="small">{metaPageId}</code>
+                </>
+              ) : null}
+            </div>
+          )}
+          {loadingMeta && (
+            <div className="small text-muted">
+              <Spinner size="sm" className="me-1" /> A carregar campanhas da Meta…
+            </div>
+          )}
+          {errorMeta && (
+            <Alert color="warning" className="py-2 small mb-0 mt-2">
+              {errorMeta}
+            </Alert>
+          )}
+          {!loadingMeta && !errorMeta && metaConnected && metaAdAccountId && metaCampaigns.length === 0 && (
+            <div className="small text-muted">Nenhuma campanha devolvida pela API para esta ad account.</div>
+          )}
+          {!loadingMeta && !errorMeta && metaConnected && metaAdAccountId && metaCampaigns.length > 0 && (
+            <Table responsive hover className="small align-middle mb-0 mt-2">
+              <thead>
+                <tr>
+                  <th>Campanha</th>
+                  <th>Status</th>
+                  <th>Status efetivo</th>
+                  <th>Objetivo</th>
+                  <th className="text-end">Atualizada</th>
+                  <th className="text-end">ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {metaCampaigns.map((c) => (
+                  <tr key={c.id}>
+                    <td className="fw-semibold">{c.name || '—'}</td>
+                    <td>
+                      <Badge color={statusBadgeColor(c.status)} pill>
+                        {c.status || '—'}
+                      </Badge>
+                    </td>
+                    <td>
+                      <Badge color={statusBadgeColor(c.effective_status)} pill>
+                        {c.effective_status || '—'}
+                      </Badge>
+                    </td>
+                    <td className="text-muted">{c.objective || '—'}</td>
+                    <td className="text-end text-muted">
+                      {c.updated_time ? String(c.updated_time).replace('T', ' ').slice(0, 16) : '—'}
+                    </td>
+                    <td className="text-end text-muted text-monospace">{c.id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </CardBody>
+      </Card>
+
       {!showGoogle && (
         <Alert color="info" className="py-2 small mb-3">
-          Tabela abaixo é <strong>demonstração</strong> (Meta + Google fictícios). Conecte o Google Ads para listar
-          campanhas reais da conta vinculada ao <code className="small">GOOGLE_ADS_CUSTOMER_ID</code> / conexão OAuth.
+          A secção <strong>Meta Ads</strong> acima usa a tua conexão (token + ad account). A tabela seguinte continua em{' '}
+          <strong>demonstração</strong> para Google fictício — conecte o Google Ads para métricas reais da conta OAuth /{' '}
+          <code className="small">GOOGLE_ADS_CUSTOMER_ID</code>.
         </Alert>
       )}
 

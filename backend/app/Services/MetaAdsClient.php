@@ -10,16 +10,77 @@ use Throwable;
 
 class MetaAdsClient
 {
-    public function __construct(
-        private readonly string $accessToken,
-        private readonly string $graphVersion,
-    ) {
-        $this->accessToken = trim($this->accessToken);
-        $this->graphVersion = trim($this->graphVersion) !== '' ? trim($this->graphVersion) : 'v21.0';
+    private readonly string $accessToken;
 
-        if ($this->accessToken === '') {
+    private readonly string $graphVersion;
+
+    public function __construct(
+        string $accessToken,
+        string $graphVersion,
+    ) {
+        $accessToken = trim($accessToken);
+        $graphVersion = trim($graphVersion);
+        $graphVersion = $graphVersion !== '' ? $graphVersion : 'v21.0';
+
+        if ($accessToken === '') {
             throw new RuntimeException('Meta Ads access token não configurado.');
         }
+
+        $this->accessToken = $accessToken;
+        $this->graphVersion = $graphVersion;
+    }
+
+    public function getAccessToken(): string
+    {
+        return $this->accessToken;
+    }
+
+    /**
+     * Usa debug_token da Meta (requer app id + secret no .env) para listar scopes do user token.
+     *
+     * @return list<string>|null
+     */
+    public static function inferScopesViaDebugToken(string $userAccessToken): ?array
+    {
+        $appId = trim((string) config('meta_ads.app_id', ''));
+        $appSecret = trim((string) config('meta_ads.app_secret', ''));
+        if ($appId === '' || $appSecret === '') {
+            return null;
+        }
+
+        $version = trim((string) config('meta_ads.graph_version', 'v21.0'));
+        $version = $version !== '' ? $version : 'v21.0';
+
+        $json = Http::timeout(15)
+            ->acceptJson()
+            ->get('https://graph.facebook.com/'.$version.'/debug_token', [
+                'input_token' => trim($userAccessToken),
+                'access_token' => $appId.'|'.$appSecret,
+            ])
+            ->json();
+
+        if (! is_array($json)) {
+            return null;
+        }
+
+        $data = $json['data'] ?? null;
+        if (! is_array($data)) {
+            return null;
+        }
+
+        $scopes = $data['scopes'] ?? null;
+        if (! is_array($scopes)) {
+            return null;
+        }
+
+        $out = [];
+        foreach ($scopes as $s) {
+            if (is_string($s) && $s !== '') {
+                $out[] = $s;
+            }
+        }
+
+        return $out === [] ? null : $out;
     }
 
     private function http(): PendingRequest
