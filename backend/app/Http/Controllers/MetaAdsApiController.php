@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\MetaAdsConnection;
 use App\Services\MetaAdsClient;
+use App\Services\MetaAdsEnvSync;
+use App\Services\MetaAdsTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -22,11 +24,18 @@ class MetaAdsApiController extends Controller
         }
 
         $account = $request->attributes->get('account');
+        $user = $request->user();
+        MetaAdsEnvSync::syncForAccount((int) $account->id, $user?->id);
         $conn = MetaAdsConnection::query()->where('account_id', $account->id)->first();
 
         return response()->json([
             'ok' => true,
             'connected' => $conn !== null,
+            'oauthEnabled' => (bool) config('meta_ads.oauth_enabled', false),
+            'preferEnvToken' => (bool) config('meta_ads.prefer_env_token', true),
+            'tokenSource' => (bool) config('meta_ads.prefer_env_token', true) && trim((string) env('META_ADS_ACCESS_TOKEN', '')) !== ''
+                ? 'env'
+                : 'database',
             'graphVersion' => $conn?->graph_version ?? (string) config('meta_ads.graph_version', 'v21.0'),
             'adAccountId' => $conn?->ad_account_id,
             'pageId' => $conn?->page_id,
@@ -82,6 +91,7 @@ class MetaAdsApiController extends Controller
                     'pixel_id' => trim((string) ($data['pixelId'] ?? '')) ?: null,
                 ]
             );
+            MetaAdsTokenService::persistExpiry($conn);
         } catch (Throwable $e) {
             report($e);
             return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
@@ -100,6 +110,42 @@ class MetaAdsApiController extends Controller
         ], 201);
     }
 
+    /**
+     * Altera só a ad account activa (mesmo token; útil para alternar entre contas do Gestor).
+     */
+    public function updateAdAccount(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        $data = $request->validate([
+            'adAccountId' => ['required', 'string', 'max:64'],
+        ]);
+
+        try {
+            $conn = $this->requireConnection($request);
+            $adAccountId = $this->normalizeAct(trim((string) $data['adAccountId']));
+            $client = $this->clientFromConnection($conn);
+            $this->assertTokenHasAdsPermissions($client);
+            $this->assertAdAccountLinkedToBusiness($client, $adAccountId);
+
+            $conn->update(['ad_account_id' => $adAccountId]);
+
+            return response()->json([
+                'ok' => true,
+                'adAccountId' => $adAccountId,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+    }
+
     public function adAccounts(Request $request): JsonResponse
     {
         if (! (bool) config('meta_ads.enabled')) {
@@ -115,11 +161,60 @@ class MetaAdsApiController extends Controller
             $client = $this->clientFromConnection($conn);
             $this->assertTokenHasAdsPermissions($client);
 
+            $limit = (int) $request->query('limit', 200);
+            $limit = max(1, min(500, $limit));
+
+            $resp = $client->get('/me/adaccounts', [
+                // O campo `business` exige scope business_management; sem ele a Meta devolve (#100).
+                'fields' => 'id,name,account_id,account_status',
+                'limit' => $limit,
+            ]);
+
+            $items = $resp['data'] ?? [];
+            if (! is_array($items)) {
+                $items = [];
+            }
+
+            return response()->json([
+                'ok' => true,
+                'adAccounts' => $items,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+    }
+
+    /**
+     * Lista ad accounts com um token colado (antes de gravar a conexão).
+     */
+    public function probeAdAccounts(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        $data = $request->validate([
+            'accessToken' => ['required', 'string', 'min:20'],
+            'graphVersion' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        try {
+            $client = new MetaAdsClient(
+                accessToken: trim((string) $data['accessToken']),
+                graphVersion: trim((string) ($data['graphVersion'] ?? '')) ?: (string) config('meta_ads.graph_version', 'v21.0'),
+            );
+            $this->assertTokenHasAdsPermissions($client);
+
             $limit = (int) $request->query('limit', 100);
             $limit = max(1, min(200, $limit));
 
             $resp = $client->get('/me/adaccounts', [
-                'fields' => 'id,name,account_id,account_status,business{id,name}',
+                'fields' => 'id,name,account_id,account_status',
                 'limit' => $limit,
             ]);
 
@@ -213,16 +308,106 @@ class MetaAdsApiController extends Controller
 
             $limit = (int) $request->query('limit', 50);
             $limit = max(1, min(200, $limit));
+            $act = $this->normalizeAct($adAccountId);
 
-            $resp = $client->get('/'.$this->normalizeAct($adAccountId).'/campaigns', [
+            $account = $client->get('/'.$act, [
+                'fields' => 'id,name,account_id,amount_spent,account_status',
+            ]);
+
+            $resp = $client->get('/'.$act.'/campaigns', [
                 'fields' => 'id,name,status,effective_status,objective,created_time,updated_time',
                 'limit' => $limit,
+                'summary' => 'total_count',
             ]);
+
+            $tokenUser = null;
+            try {
+                $me = $client->get('/me', ['fields' => 'id,name']);
+                $tokenUser = [
+                    'id' => $me['id'] ?? null,
+                    'name' => $me['name'] ?? null,
+                ];
+            } catch (Throwable) {
+                // opcional
+            }
 
             return response()->json([
                 'ok' => true,
                 'adAccountId' => $adAccountId,
+                'adAccountName' => $account['name'] ?? null,
+                'adAccountNumericId' => $account['account_id'] ?? null,
+                'amountSpent' => $account['amount_spent'] ?? null,
+                'campaignsTotal' => (int) ($resp['summary']['total_count'] ?? count($resp['data'] ?? [])),
+                'tokenUser' => $tokenUser,
                 'campaigns' => $resp['data'] ?? [],
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+    }
+
+    /**
+     * Métricas agregadas da campanha (Marketing API — edge {@code insights}).
+     *
+     * Query: {@code datePreset} (ex. last_7_days, last_30_days), {@code timeIncrement} (1 = por dia),
+     * {@code fields} (lista separada por vírgula; opcional).
+     */
+    public function campaignInsights(Request $request, string $campaignId): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        $campaignId = trim($campaignId);
+        if ($campaignId === '' || ! preg_match('/^\d+$/', $campaignId)) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'campaignId inválido (esperado id numérico da Meta).',
+            ], 422);
+        }
+
+        try {
+            $conn = $this->requireConnection($request);
+            $adAccountId = $this->requireAdAccountId($request, $conn);
+            $client = $this->clientFromConnection($conn);
+            $this->assertTokenHasAdsPermissions($client);
+            $this->assertAdAccountLinkedToBusiness($client, $adAccountId);
+
+            $datePreset = trim((string) $request->query('datePreset', 'last_30d'));
+            if ($datePreset === '') {
+                $datePreset = 'last_30d';
+            }
+            $timeIncrement = $request->query('timeIncrement');
+            $timeIncrement = $timeIncrement === null || $timeIncrement === ''
+                ? null
+                : max(1, min(90, (int) $timeIncrement));
+
+            $defaultFields = 'impressions,clicks,spend,reach,frequency,cpm,cpc,ctr,actions,cost_per_action_type';
+            $fieldsRaw = trim((string) $request->query('fields', ''));
+            $fields = $fieldsRaw !== '' ? $fieldsRaw : $defaultFields;
+
+            $params = [
+                'fields' => $fields,
+                'date_preset' => $datePreset,
+            ];
+            if ($timeIncrement !== null) {
+                $params['time_increment'] = $timeIncrement;
+            }
+
+            $resp = $client->get('/'.$campaignId.'/insights', $params);
+
+            return response()->json([
+                'ok' => true,
+                'campaignId' => $campaignId,
+                'datePreset' => $datePreset,
+                'timeIncrement' => $timeIncrement,
+                'insights' => $resp['data'] ?? [],
+                'paging' => $resp['paging'] ?? null,
             ]);
         } catch (Throwable $e) {
             report($e);
@@ -395,9 +580,13 @@ class MetaAdsApiController extends Controller
     private function requireConnection(Request $request): MetaAdsConnection
     {
         $account = $request->attributes->get('account');
+        $user = $request->user();
+        MetaAdsEnvSync::syncForAccount((int) $account->id, $user?->id);
         $conn = MetaAdsConnection::query()->where('account_id', $account->id)->first();
         if (! $conn) {
-            throw new RuntimeException('Meta Ads não conectado para esta conta.');
+            throw new RuntimeException(
+                'Meta Ads não configurado. Defina META_ADS_ACCESS_TOKEN e META_ADS_AD_ACCOUNT_ID no .env ou cole o token em Configurações.'
+            );
         }
 
         return $conn;
@@ -488,9 +677,26 @@ class MetaAdsApiController extends Controller
     private function assertAdAccountLinkedToBusiness(MetaAdsClient $client, string $adAccountId): void
     {
         $act = $this->normalizeAct($adAccountId);
-        $resp = $client->get('/'.$act, [
-            'fields' => 'id,name,account_id,business{id,name}',
-        ]);
+
+        try {
+            $resp = $client->get('/'.$act, [
+                'fields' => 'id,name,account_id,business{id,name}',
+            ]);
+        } catch (RuntimeException $e) {
+            if (! str_contains(strtolower($e->getMessage()), 'business_management')) {
+                throw $e;
+            }
+            // Sem scope business_management a Meta não devolve `business`; valida só leitura da ad account.
+            $resp = $client->get('/'.$act, [
+                'fields' => 'id,name,account_id',
+            ]);
+            $id = is_array($resp) ? trim((string) ($resp['id'] ?? '')) : '';
+            if ($id === '') {
+                throw $e;
+            }
+
+            return;
+        }
 
         $business = is_array($resp) ? ($resp['business'] ?? null) : null;
         $bizId = is_array($business) ? trim((string) ($business['id'] ?? '')) : '';

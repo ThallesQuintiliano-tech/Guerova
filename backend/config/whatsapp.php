@@ -30,4 +30,18 @@ return [
      */
     'bridge_secret' => env('WHATSAPP_BRIDGE_SECRET'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | WhatsApp Web (QR Code — estilo web.whatsapp.com)
+    |--------------------------------------------------------------------------
+    |
+    | Serviço Node em whatsapp-bridge/ (Baileys). Inicie com:
+    |   cd whatsapp-bridge && npm install && npm start
+    |
+    */
+
+    'web_bridge_url' => env('WHATSAPP_WEB_BRIDGE_URL', 'http://127.0.0.1:3100'),
+
+    'web_bridge_timeout' => (int) env('WHATSAPP_WEB_BRIDGE_TIMEOUT', 30),
+
 ];

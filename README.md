@@ -64,7 +64,21 @@ O Vite usa `VITE_PORT` (padrão **5173** no `.env`) e faz **proxy** de `/api/*` 
 
 O site [react.architectui.com](https://react.architectui.com/) é o produto **PRO** (ZIP / repositório privado após compra). Depois de baixar o pacote, substitua o conteúdo de `frontend/` pelo do PRO e **reaplique** no `vite.config.*`: `server` e `preview` (porta, `strictPort`, `proxy['/api']`) e `VITE_API_PROXY_TARGET`, para continuar integrado ao Laravel.
 
-## WhatsApp (Cloud API — Meta)
+## WhatsApp
+
+### WhatsApp Web (QR Code — como web.whatsapp.com)
+
+Conexão pelo telemóvel, sem token da Meta:
+
+1. No `backend/.env`: `WHATSAPP_WEB_BRIDGE_URL=http://127.0.0.1:3100` (e opcionalmente o mesmo `WHATSAPP_BRIDGE_SECRET` usado no envio).
+2. Na pasta `whatsapp-bridge/`: `npm install` e `npm start` (porta 3100).
+3. No painel **Lead Master → WhatsApp**, clique em **Mostrar QR Code** e leia o código em **Aparelhos conectados** no app.
+
+O serviço guarda a sessão em `whatsapp-bridge/auth_data/` (não versionar). Em produção, execute o bridge como processo persistente (systemd, PM2, etc.) e restrinja a porta 3100 ao localhost.
+
+**Aviso:** APIs não oficiais do WhatsApp Web podem violar os Termos de Serviço da Meta; use por sua conta e risco. Para uso comercial oficial, prefira a Cloud API abaixo.
+
+### Cloud API (Meta) — opcional
 
 Integração oficial via [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api). Precisas de conta **Meta for Developers**, produto **WhatsApp** no app, número **WhatsApp Business** e token com permissões de mensagens.
 

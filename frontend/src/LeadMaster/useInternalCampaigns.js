@@ -69,6 +69,19 @@ export function useInternalCampaigns() {
     [apiFetch, load]
   );
 
-  return { loading, error, campaigns, refetch: load, create, update };
+  const remove = useCallback(
+    async (id) => {
+      const r = await apiFetch(`/api/campaigns/${id}`, { method: 'DELETE' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) {
+        throw new Error(j?.error || `Erro HTTP ${r.status}`);
+      }
+      await load();
+      return true;
+    },
+    [apiFetch, load]
+  );
+
+  return { loading, error, campaigns, refetch: load, create, update, remove };
 }
 

@@ -26,6 +26,7 @@ import {
 } from './mockData';
 import { useGoogleAdsCampaigns } from './useGoogleAdsCampaigns';
 import { useMetaAdsCampaigns } from './useMetaAdsCampaigns';
+import { featureGoogle } from '../config/leadMasterFeatures';
 
 function statusBadgeColor(status) {
   if (status === 'ACTIVE' || status === 'ENABLED') return 'success';
@@ -35,7 +36,7 @@ function statusBadgeColor(status) {
 
 export default function Dashboard() {
   const [compare, setCompare] = useState(false);
-  const { loading: gadsLoading, error: gadsError, connected: gadsConnected, adsCampaigns } = useGoogleAdsCampaigns();
+  const googleAds = useGoogleAdsCampaigns();
   const {
     loading: metaLoading,
     error: metaError,
@@ -45,15 +46,15 @@ export default function Dashboard() {
     metaCampaigns,
     refetch: refetchMeta,
   } = useMetaAdsCampaigns();
-  const campaignRows = gadsConnected ? adsCampaigns : mockCampaignsAdsManager;
 
   return (
     <div className="p-4">
       <h2 className="h4 mb-1">Relatórios e campanhas</h2>
       <p className="text-muted small mb-4">
         Visão inspirada em relatórios reais (Four Imóveis) + gráficos de exemplo. As campanhas <strong>Meta Ads</strong>{' '}
-        reais aparecem no cartão inferior direito quando a conexão está configurada; Google Ads usa OAuth como na página
-        Campanhas.
+        reais aparecem no cartão à direita quando a conexão está configurada em{' '}
+        <Link to="/leadmaster/configuracao">Configurações</Link>.
+        {featureGoogle ? ' Google Ads (OAuth) pode ser ligado ao ativar a integração Google no ambiente.' : null}
       </p>
 
       <h3 className="h6 text-uppercase text-muted mb-3">Resumo WhatsApp / Meta (mock)</h3>
@@ -270,68 +271,75 @@ export default function Dashboard() {
         </Col>
         <Col lg={5}>
           <div className="d-flex flex-column gap-3">
-            <Card className="lm-card-soft">
-              <CardBody>
-                <CardTitle tag="h6" className="mb-3">
-                  {gadsConnected ? 'Google Ads (últimos 7 dias)' : 'Campanhas ativas (exemplo)'}
-                </CardTitle>
-                {gadsConnected && gadsLoading && (
-                  <div className="small text-muted mb-2">
-                    <Spinner size="sm" className="me-1" /> Carregando…
-                  </div>
-                )}
-                {gadsConnected && gadsError && <div className="small text-warning mb-2">{gadsError}</div>}
-                <Table size="sm" borderless className="mb-0 small">
-                  <thead>
-                    <tr className="text-muted">
-                      <th>Campanha</th>
-                      <th>Plataforma</th>
-                      <th className="text-end">Leads 7d</th>
-                      <th className="text-end">CPL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {gadsConnected && !gadsLoading && !gadsError && campaignRows.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="text-muted text-center py-3">
-                          Nenhuma campanha com dados no período.
-                        </td>
+            {featureGoogle && (
+              <Card className="lm-card-soft">
+                <CardBody>
+                  <CardTitle tag="h6" className="mb-3">
+                    {googleAds.connected ? 'Google Ads (últimos 7 dias)' : 'Campanhas ativas (exemplo)'}
+                  </CardTitle>
+                  {googleAds.connected && googleAds.loading && (
+                    <div className="small text-muted mb-2">
+                      <Spinner size="sm" className="me-1" /> Carregando…
+                    </div>
+                  )}
+                  {googleAds.connected && googleAds.error && (
+                    <div className="small text-warning mb-2">{googleAds.error}</div>
+                  )}
+                  <Table size="sm" borderless className="mb-0 small">
+                    <thead>
+                      <tr className="text-muted">
+                        <th>Campanha</th>
+                        <th>Plataforma</th>
+                        <th className="text-end">Leads 7d</th>
+                        <th className="text-end">CPL</th>
                       </tr>
-                    )}
-                    {campaignRows.map((c) => {
-                      const isGoogle = c.source === 'google_ads';
-                      const cpl = c.cpl != null ? Number(c.cpl) : null;
-                      return (
-                        <tr key={c.id}>
-                          <td>
-                            <div className="fw-semibold">{c.name}</div>
-                            <Badge
-                              color={
-                                c.status === 'ACTIVE' || c.status === 'ENABLED'
-                                  ? 'success'
-                                  : c.status === 'PAUSED'
-                                    ? 'warning'
-                                    : 'secondary'
-                              }
-                              pill
-                              className="me-1"
-                            >
-                              {c.status}
-                            </Badge>
-                            <span className="text-muted">{c.objective}</span>
-                          </td>
-                          <td>{c.platform}</td>
-                          <td className="text-end">{c.leads7d}</td>
-                          <td className="text-end">
-                            {cpl != null ? `R$ ${cpl.toFixed(2)}` : isGoogle ? '—' : `R$ ${Number(c.cpl).toFixed(2)}`}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </Table>
-              </CardBody>
-            </Card>
+                    </thead>
+                    <tbody>
+                      {googleAds.connected &&
+                        !googleAds.loading &&
+                        !googleAds.error &&
+                        (googleAds.connected ? googleAds.adsCampaigns : mockCampaignsAdsManager).length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="text-muted text-center py-3">
+                              Nenhuma campanha com dados no período.
+                            </td>
+                          </tr>
+                        )}
+                      {(googleAds.connected ? googleAds.adsCampaigns : mockCampaignsAdsManager).map((c) => {
+                        const isGoogle = c.source === 'google_ads';
+                        const cpl = c.cpl != null ? Number(c.cpl) : null;
+                        return (
+                          <tr key={c.id}>
+                            <td>
+                              <div className="fw-semibold">{c.name}</div>
+                              <Badge
+                                color={
+                                  c.status === 'ACTIVE' || c.status === 'ENABLED'
+                                    ? 'success'
+                                    : c.status === 'PAUSED'
+                                      ? 'warning'
+                                      : 'secondary'
+                                }
+                                pill
+                                className="me-1"
+                              >
+                                {c.status}
+                              </Badge>
+                              <span className="text-muted">{c.objective}</span>
+                            </td>
+                            <td>{c.platform}</td>
+                            <td className="text-end">{c.leads7d}</td>
+                            <td className="text-end">
+                              {cpl != null ? `R$ ${cpl.toFixed(2)}` : isGoogle ? '—' : `R$ ${Number(c.cpl).toFixed(2)}`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+                </CardBody>
+              </Card>
+            )}
 
             <Card className="lm-card-soft">
               <CardBody>

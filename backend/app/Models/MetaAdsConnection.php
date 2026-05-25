@@ -16,12 +16,14 @@ class MetaAdsConnection extends Model
         'ig_user_id',
         'pixel_id',
         'access_token',
+        'access_token_expires_at',
     ];
 
     protected $hidden = ['access_token'];
 
     protected $casts = [
         'access_token' => 'encrypted',
+        'access_token_expires_at' => 'datetime',
     ];
 
     /**

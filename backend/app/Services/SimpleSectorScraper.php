@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\OutboundHttpSsl;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -58,7 +60,11 @@ class SimpleSectorScraper
      */
     private function openStreetMapRows(array $sector, string $resolvedCity, int $cap): array
     {
-        $place = $this->geocodePlace($resolvedCity);
+        $loc = $this->parseCityAndUf($resolvedCity);
+        $geocodeQuery = $loc['uf'] !== ''
+            ? $loc['city'].', '.$loc['uf'].', Brasil'
+            : $this->normalizeCityQuery($loc['city'] !== '' ? $loc['city'] : $resolvedCity);
+        $place = $this->geocodePlace($geocodeQuery);
 
         $elements = $place['areaId']
             ? $this->overpassSearchByArea($place['areaId'], $sector['overpass_filters'], $cap)
@@ -109,21 +115,41 @@ class SimpleSectorScraper
         }
 
         $region = (string) config('scraping.google_region', 'BR');
-        $pageSize = max(1, min(20, $cap));
+        $loc = $this->parseCityAndUf($resolvedCity);
+        $geocodeQuery = $loc['uf'] !== ''
+            ? $loc['city'].', '.$loc['uf'].', Brasil'
+            : $this->normalizeCityQuery($loc['city']);
+        $place = $this->geocodePlace($geocodeQuery);
+        $cityForMatch = $loc['city'];
+        $ufForMatch = $loc['uf'];
+        $bbox = $place['bbox'];
 
-        $textQuery = $sector['label'].' em '.$resolvedCity;
+        $locationLabel = $ufForMatch !== '' ? $loc['city'].', '.$ufForMatch : $loc['city'];
+        $textQuery = sprintf('%s em %s, Brasil', $sector['label'], $locationLabel);
+        $pageSize = max(1, min(20, $cap * 3));
 
-        $resp = Http::timeout(20)
+        $resp = $this->http(20)
             ->withHeaders([
                 'Content-Type' => 'application/json',
                 'X-Goog-Api-Key' => $apiKey,
-                // Mantemos a resposta pequena, suficiente para preencher a grade
-                'X-Goog-FieldMask' => 'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.internationalPhoneNumber,places.googleMapsUri',
+                'X-Goog-FieldMask' => 'places.id,places.displayName,places.formattedAddress,places.addressComponents,places.websiteUri,places.nationalPhoneNumber,places.internationalPhoneNumber,places.googleMapsUri',
             ])
             ->post('https://places.googleapis.com/v1/places:searchText', [
                 'textQuery' => $textQuery,
                 'regionCode' => $region,
                 'pageSize' => $pageSize,
+                'locationRestriction' => [
+                    'rectangle' => [
+                        'low' => [
+                            'latitude' => $bbox['south'],
+                            'longitude' => $bbox['west'],
+                        ],
+                        'high' => [
+                            'latitude' => $bbox['north'],
+                            'longitude' => $bbox['east'],
+                        ],
+                    ],
+                ],
             ]);
 
         if (! $resp->successful()) {
@@ -137,12 +163,54 @@ class SimpleSectorScraper
             return [];
         }
 
-        $places = array_slice($places, 0, $cap);
+        $matched = [];
+        foreach ($places as $p) {
+            if (! is_array($p)) {
+                continue;
+            }
+            $address = (string) ($p['formattedAddress'] ?? '');
+            $actualCity = $this->cityFromPlace($p) ?? $this->parseBrazilianCityFromAddress($address);
+            if (! $this->placeMatchesLocation($cityForMatch, $ufForMatch, $actualCity, $address)) {
+                continue;
+            }
+            $matched[] = ['place' => $p, 'actualCity' => $actualCity ?? $cityForMatch, 'address' => $address];
+            if (count($matched) >= $cap) {
+                break;
+            }
+        }
 
-        return array_map(function (array $p, int $i) use ($resolvedCity, $sector) {
+        if ($matched === []) {
+            foreach ($places as $p) {
+                if (! is_array($p)) {
+                    continue;
+                }
+                $address = (string) ($p['formattedAddress'] ?? '');
+                if ($ufForMatch !== '' && ! $this->addressMatchesUf($address, $ufForMatch)) {
+                    continue;
+                }
+                $actualCity = $this->cityFromPlace($p) ?? $this->parseBrazilianCityFromAddress($address);
+                $matched[] = [
+                    'place' => $p,
+                    'actualCity' => $actualCity ?? $cityForMatch,
+                    'address' => $address,
+                ];
+                if (count($matched) >= $cap) {
+                    break;
+                }
+            }
+        }
+
+        if ($matched === []) {
+            throw new RuntimeException(
+                'Nenhum resultado na região informada. Selecione cidade e UF na lista (ex.: Campinas - SP).'
+            );
+        }
+
+        return array_map(function (array $item, int $i) use ($sector) {
+            $p = $item['place'];
             $pid = (string) ($p['id'] ?? '');
             $name = (string) (($p['displayName']['text'] ?? '') ?: '');
-            $address = (string) ($p['formattedAddress'] ?? '');
+            $address = $item['address'];
             $website = (string) ($p['websiteUri'] ?? '');
             $phone = (string) ($p['nationalPhoneNumber'] ?? $p['internationalPhoneNumber'] ?? '');
             $mapsUrl = (string) ($p['googleMapsUri'] ?? ($pid !== '' ? 'https://www.google.com/maps/search/?api=1&query_place_id='.$pid : ''));
@@ -154,7 +222,7 @@ class SimpleSectorScraper
                 'email' => '',
                 'site' => $website,
                 'instagram' => '',
-                'cidade' => $resolvedCity,
+                'cidade' => $item['actualCity'],
                 'extra' => $address,
                 'fonteTipo' => 'Google Places',
                 'urlOrigem' => $mapsUrl,
@@ -166,7 +234,7 @@ class SimpleSectorScraper
                 'scrapeInstagram' => null,
                 'scrapeNote' => $sector['label'],
             ];
-        }, $places, array_keys($places));
+        }, $matched, array_keys($matched));
     }
 
     /**
@@ -210,26 +278,172 @@ class SimpleSectorScraper
         ];
     }
 
+    private function normalizeCityQuery(string $city): string
+    {
+        $city = trim($city);
+        if ($city === '') {
+            return $city;
+        }
+        if (! preg_match('/\bbrasil\b/i', $city)) {
+            $city .= ', Brasil';
+        }
+
+        return $city;
+    }
+
+    private function extractCityToken(string $city): string
+    {
+        $city = trim($city);
+        $city = preg_replace('/\s*-\s*[A-Z]{2}\s*$/i', '', $city) ?? $city;
+        $city = preg_replace('/,\s*brasil\s*$/i', '', $city) ?? $city;
+
+        return trim($city);
+    }
+
     /**
-     * @return array{areaId:int|null,bbox:array{south:float,west:float,north:float,east:float}}
+     * @return array{city:string,uf:string}
+     */
+    private function parseCityAndUf(string $resolvedCity): array
+    {
+        $resolvedCity = trim($resolvedCity);
+        if ($resolvedCity === '') {
+            return ['city' => '', 'uf' => ''];
+        }
+        if (preg_match('/^(.+?)\s*-\s*([A-Z]{2})\s*$/i', $resolvedCity, $m)) {
+            return [
+                'city' => trim($m[1]),
+                'uf' => strtoupper($m[2]),
+            ];
+        }
+
+        return [
+            'city' => $this->extractCityToken($resolvedCity),
+            'uf' => '',
+        ];
+    }
+
+    private function normalizeForCompare(string $text): string
+    {
+        $text = mb_strtolower($text, 'UTF-8');
+        $converted = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
+
+        return trim(preg_replace('/[^a-z0-9]+/', ' ', $converted !== false ? $converted : $text) ?? $text);
+    }
+
+    private function cityNamesMatch(string $requestedCity, string $addressCity): bool
+    {
+        $requested = $this->normalizeForCompare($this->extractCityToken($requestedCity));
+        $actual = $this->normalizeForCompare($addressCity);
+        if ($requested === '' || $actual === '') {
+            return false;
+        }
+
+        if ($requested === $actual) {
+            return true;
+        }
+
+        return strlen($requested) >= 3
+            && (str_contains($actual, $requested) || str_contains($requested, $actual));
+    }
+
+    private function placeMatchesLocation(
+        string $requestedCity,
+        string $requestedUf,
+        ?string $actualCity,
+        string $address
+    ): bool {
+        if ($requestedUf !== '' && ! $this->addressMatchesUf($address, $requestedUf)) {
+            return false;
+        }
+        if ($requestedCity === '') {
+            return true;
+        }
+        if ($actualCity === null) {
+            return str_contains(
+                $this->normalizeForCompare($address),
+                $this->normalizeForCompare($requestedCity)
+            );
+        }
+
+        return $this->cityNamesMatch($requestedCity, $actualCity);
+    }
+
+    private function addressMatchesUf(string $address, string $uf): bool
+    {
+        $uf = strtoupper(trim($uf));
+        if ($uf === '') {
+            return true;
+        }
+
+        return $this->ufFromFormattedAddress($address) === $uf;
+    }
+
+    private function ufFromFormattedAddress(string $address): string
+    {
+        if (preg_match('/-\s*([A-Z]{2})\s*,/u', $address, $m)) {
+            return strtoupper($m[1]);
+        }
+
+        return '';
+    }
+
+    private function parseBrazilianCityFromAddress(string $address): ?string
+    {
+        if (preg_match('/,\s*([^,]+?)\s*-\s*[A-Z]{2}\s*,\s*\d{5}-?\d{3}/u', $address, $m)) {
+            return trim($m[1]);
+        }
+        if (preg_match('/,\s*([^,]+?)\s*-\s*[A-Z]{2}\s*$/u', $address, $m)) {
+            return trim($m[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $place
+     */
+    private function cityFromPlace(array $place): ?string
+    {
+        $components = $place['addressComponents'] ?? [];
+        if (! is_array($components)) {
+            return null;
+        }
+
+        foreach (['locality', 'administrative_area_level_2'] as $preferredType) {
+            foreach ($components as $component) {
+                if (! is_array($component)) {
+                    continue;
+                }
+                $types = $component['types'] ?? [];
+                if (! is_array($types) || ! in_array($preferredType, $types, true)) {
+                    continue;
+                }
+                $name = trim((string) ($component['longText'] ?? $component['text'] ?? ''));
+                if ($name !== '') {
+                    return $name;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{areaId:int|null,bbox:array{south:float,west:float,north:float,east:float},name:string}
      */
     private function geocodePlace(string $query): array
     {
-        $resp = Http::timeout(12)
-            ->withHeaders(['User-Agent' => 'GuerovaScraper/0.2 (+local dev)'])
-            ->get('https://nominatim.openstreetmap.org/search', [
-                'q' => $query,
-                'format' => 'json',
-                'limit' => 1,
-            ]);
+        $query = $this->normalizeCityQuery($query);
+        $json = $this->nominatimSearch($query, 'city');
+        $first = is_array($json[0] ?? null) ? $json[0] : null;
 
-        if (! $resp->successful()) {
-            throw new RuntimeException('Geocoding falhou (Nominatim).');
+        if ($first === null || ! $this->isMunicipalityResult($first)) {
+            throw new RuntimeException(
+                'Cidade não reconhecida. Selecione na lista com estado (UF), ex.: São Paulo - SP.'
+            );
         }
 
-        $json = $resp->json();
-        $first = is_array($json) ? ($json[0] ?? null) : null;
-        $bb = is_array($first) ? ($first['boundingbox'] ?? null) : null;
+        $bb = $first['boundingbox'] ?? null;
         if (! is_array($bb) || count($bb) < 4) {
             throw new RuntimeException('Cidade/região não encontrada no geocoding.');
         }
@@ -252,6 +466,7 @@ class SimpleSectorScraper
         // Nominatim boundingbox: [south, north, west, east] como strings
         return [
             'areaId' => $areaId,
+            'name' => trim((string) ($first['name'] ?? '')),
             'bbox' => [
                 'south' => (float) $bb[0],
                 'north' => (float) $bb[1],
@@ -259,6 +474,51 @@ class SimpleSectorScraper
                 'east' => (float) $bb[3],
             ],
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function nominatimSearch(string $query, ?string $featuretype): array
+    {
+        $params = [
+            'q' => $query,
+            'format' => 'json',
+            'limit' => 1,
+            'countrycodes' => 'br',
+        ];
+        if ($featuretype !== null) {
+            $params['featuretype'] = $featuretype;
+        }
+
+        $resp = $this->http(12)
+            ->withHeaders(['User-Agent' => 'GuerovaScraper/0.2 (+local dev)'])
+            ->get('https://nominatim.openstreetmap.org/search', $params);
+
+        if (! $resp->successful()) {
+            throw new RuntimeException('Geocoding falhou (Nominatim).');
+        }
+
+        $json = $resp->json();
+
+        return is_array($json) ? $json : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function isMunicipalityResult(array $row): bool
+    {
+        $type = (string) ($row['type'] ?? '');
+        $class = (string) ($row['class'] ?? '');
+        $addressType = (string) ($row['addresstype'] ?? '');
+
+        if (in_array($type, ['city', 'town', 'village', 'administrative'], true)) {
+            return true;
+        }
+
+        return $class === 'boundary'
+            && in_array($addressType, ['city', 'town', 'village', 'municipality'], true);
     }
 
     /**
@@ -286,7 +546,7 @@ class SimpleSectorScraper
             implode('', $clauses).
             ');out tags center;';
 
-        $resp = Http::timeout(30)
+        $resp = $this->http(30)
             ->withHeaders([
                 'User-Agent' => 'GuerovaScraper/0.2 (+local dev)',
                 'Accept' => 'application/json',
@@ -342,7 +602,7 @@ class SimpleSectorScraper
             implode('', $clauses).
             ');out tags center;';
 
-        $resp = Http::timeout(30)
+        $resp = $this->http(30)
             ->withHeaders([
                 'User-Agent' => 'GuerovaScraper/0.2 (+local dev)',
                 'Accept' => 'application/json',
@@ -365,5 +625,10 @@ class SimpleSectorScraper
         }
 
         return array_slice($elements, 0, $limit);
+    }
+
+    private function http(int $timeout): PendingRequest
+    {
+        return OutboundHttpSsl::apply(Http::timeout($timeout));
     }
 }

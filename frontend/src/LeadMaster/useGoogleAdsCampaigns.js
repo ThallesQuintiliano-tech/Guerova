@@ -1,18 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { featureGoogle } from '../config/leadMasterFeatures';
 
 /**
  * Carrega estado da conexão Google Ads e campanhas agregadas (últimos 7 dias) para a conta ativa (header X-Account-Id).
  */
 export function useGoogleAdsCampaigns() {
   const { apiFetch, token, isAuthenticated } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(featureGoogle);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
   const [connectionInfo, setConnectionInfo] = useState(null);
   const [adsCampaigns, setAdsCampaigns] = useState([]);
 
   const load = useCallback(async () => {
+    if (!featureGoogle) {
+      setLoading(false);
+      setConnected(false);
+      setAdsCampaigns([]);
+      setConnectionInfo(null);
+      setError(null);
+      return;
+    }
     if (!isAuthenticated) {
       setLoading(false);
       setConnected(false);
@@ -54,13 +63,16 @@ export function useGoogleAdsCampaigns() {
     } finally {
       setLoading(false);
     }
-  }, [apiFetch, isAuthenticated]);
+  }, [apiFetch, isAuthenticated, featureGoogle]);
 
   useEffect(() => {
     load();
   }, [load, token]);
 
   const startOAuth = useCallback(async () => {
+    if (!featureGoogle) {
+      throw new Error('Google Ads está desativado nesta versão (fase só Meta Ads).');
+    }
     const r = await apiFetch('/api/google-ads/oauth/authorize-url');
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.url) {

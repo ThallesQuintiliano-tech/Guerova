@@ -17,7 +17,20 @@ class ResolveAccount
 
         $accountId = $request->header('X-Account-Id') ?? $request->query('accountId');
         if (! $accountId) {
-            return response()->json(['ok' => false, 'error' => 'Informe a conta (X-Account-Id).'], 400);
+            $linkedIds = $user->accounts()->pluck('accounts.id')->unique()->values();
+            if ($linkedIds->count() === 1) {
+                $accountId = (string) $linkedIds->first();
+            } elseif ($linkedIds->count() === 0) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'Este utilizador não está associado a nenhuma conta Guerova (workspace). Associe-o em account_user ou execute php artisan db:seed.',
+                ], 400);
+            } else {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'Informe a conta no cabeçalho X-Account-Id (este utilizador tem acesso a várias contas).',
+                ], 400);
+            }
         }
 
         /** @var Account|null $account */

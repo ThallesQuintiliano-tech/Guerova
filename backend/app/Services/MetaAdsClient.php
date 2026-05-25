@@ -51,8 +51,7 @@ class MetaAdsClient
         $version = trim((string) config('meta_ads.graph_version', 'v21.0'));
         $version = $version !== '' ? $version : 'v21.0';
 
-        $json = Http::timeout(15)
-            ->acceptJson()
+        $json = self::withMetaSsl(Http::timeout(15)->acceptJson())
             ->get('https://graph.facebook.com/'.$version.'/debug_token', [
                 'input_token' => trim($userAccessToken),
                 'access_token' => $appId.'|'.$appSecret,
@@ -85,10 +84,26 @@ class MetaAdsClient
 
     private function http(): PendingRequest
     {
-        return Http::baseUrl('https://graph.facebook.com/'.$this->graphVersion)
-            ->acceptJson()
-            ->asForm()
-            ->timeout(30);
+        return self::withMetaSsl(
+            Http::baseUrl('https://graph.facebook.com/'.$this->graphVersion)
+                ->acceptJson()
+                ->asForm()
+                ->timeout(30)
+        );
+    }
+
+    private static function withMetaSsl(PendingRequest $request): PendingRequest
+    {
+        $ca = config('meta_ads.http_ca_bundle');
+        if (is_string($ca) && $ca !== '' && is_file($ca)) {
+            return $request->withOptions(['verify' => $ca]);
+        }
+
+        if (! (bool) config('meta_ads.http_verify_ssl', true)) {
+            return $request->withOptions(['verify' => false]);
+        }
+
+        return $request;
     }
 
     /**
@@ -167,8 +182,7 @@ class MetaAdsClient
         $adAccountId = $this->normalizeAdAccountId($adAccountId);
         $url = 'https://graph.facebook.com/'.$this->graphVersion.$this->normalizePath('/'.$adAccountId.'/adimages');
 
-        $res = Http::timeout(120)
-            ->asMultipart()
+        $res = self::withMetaSsl(Http::timeout(120)->asMultipart())
             ->post($url, [
                 ['name' => 'access_token', 'contents' => $this->accessToken],
                 ['name' => 'filename', 'contents' => $fileContents, 'filename' => $clientFilename],
@@ -252,9 +266,16 @@ class MetaAdsClient
      */
     public static function safeError(Throwable $e): array
     {
+        $message = $e->getMessage();
+        $tokenExpired = MetaAdsTokenService::isExpiredErrorMessage($message);
+        if ($tokenExpired) {
+            $message = 'Token Meta expirado ou inválido. Gere um novo no Graph API Explorer e atualize META_ADS_ACCESS_TOKEN no .env ou em Configurações → Meta Ads.';
+        }
+
         return [
             'ok' => false,
-            'error' => $e->getMessage(),
+            'error' => $message,
+            'tokenExpired' => $tokenExpired,
         ];
     }
 }

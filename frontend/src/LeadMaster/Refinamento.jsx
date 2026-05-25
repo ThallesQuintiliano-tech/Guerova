@@ -22,7 +22,8 @@ export default function Refinamento() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const briefing = state?.briefing;
-  const propertyTitle = briefing?.propertyTitle || 'Imóvel';
+  const propertyTitle =
+    briefing?.propertyName || briefing?.campaignName || briefing?.propertyTitle || 'Imóvel';
 
   const [city, setCity] = useState(briefing?.city || 'Mogi das Cruzes — SP');
   const [centerPoint, setCenterPoint] = useState('Av. Bandeirantes, 1000 (referência)');

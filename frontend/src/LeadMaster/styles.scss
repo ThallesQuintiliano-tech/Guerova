@@ -176,7 +176,8 @@ $lm-accent: #6366f1;
   width: 100%;
 }
 
-.lm-header-typeahead {
+.lm-header-typeahead,
+.lm-city-picker-typeahead {
   .rbt-input-main {
     min-height: 38px;
   }
@@ -184,6 +185,10 @@ $lm-accent: #6366f1;
   .dropdown-menu {
     z-index: 1080;
   }
+}
+
+.lm-city-picker-typeahead {
+  width: 100%;
 }
 
 .lm-kpi-card {

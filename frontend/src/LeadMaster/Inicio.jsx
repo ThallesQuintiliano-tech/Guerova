@@ -17,11 +17,11 @@ export default function Inicio() {
           <p className="text-muted mb-1" style={{ fontSize: '1.05rem', maxWidth: '38rem' }}>
             <strong>(Sem pagar caro e com você no controle)</strong>
           </p>
-          <p className="text-muted mb-4" style={{ maxWidth: '38rem' }}>
-            Você não precisa dominar tráfego pago: preenche o <strong>briefing do imóvel</strong> e a ferramenta
-            devolve textos, títulos, botões e ideias de imagem/vídeo para colar no <strong>Gerenciador de Negócios</strong>
-            — ou, no futuro, publicar via integração.
-          </p>
+      <p className="text-muted mb-4" style={{ maxWidth: '38rem' }}>
+        Você não precisa dominar tráfego pago: preenche o <strong>briefing Meta Ads</strong> (campanha, conjunto e anúncio) e a IA devolve
+        textos, títulos, botões e ideias de imagem/vídeo para usar no <strong>Meta Ads</strong> (Gestor de Anúncios) —
+        incluindo publicação em <strong>PAUSED</strong> pela API quando ligar a conta em Configurações.
+      </p>
           <Button
             tag={Link}
             color="primary"

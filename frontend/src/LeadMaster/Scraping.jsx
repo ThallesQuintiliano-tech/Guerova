@@ -3,6 +3,8 @@ import { Row, Col, Card, CardBody, CardTitle, Label, Input, Button, Table, Alert
 import { Link } from 'react-router-dom';
 import DataTable from 'react-data-table-component';
 import { scrapingSectors } from './mockData';
+import CityStatePicker from './CityStatePicker';
+import { validateCityField } from './cityField';
 
 function downloadCsv(columns, rows, filename) {
   const sep = ';';
@@ -70,6 +72,13 @@ export default function Scraping() {
     setJobId(null);
     setError(null);
     setFilterText('');
+
+    const cityCheck = validateCityField(city);
+    if (!cityCheck.ok) {
+      setError(cityCheck.message);
+      setLoading(false);
+      return;
+    }
 
     try {
       const r = await fetch('/api/scraping/run', {
@@ -158,8 +167,8 @@ export default function Scraping() {
     <div className="p-4">
       <h2 className="h4 mb-1">Scraping — dados reais</h2>
       <p className="text-muted small mb-4">
-        Selecione a fonte, o segmento e a cidade. OpenStreetMap funciona sem chave; Google Places precisa de chave no
-        backend.
+        Selecione a fonte, o segmento e a cidade. OpenStreetMap funciona sem chave. Google Places usa a API
+        oficial (precisa de <code>GOOGLE_MAPS_API_KEY</code> no backend).
       </p>
 
       <Alert color="light" className="border mb-4 small">
@@ -198,16 +207,7 @@ export default function Scraping() {
                 ) : null}
               </div>
               <div className="mb-3">
-                <Label>Cidade</Label>
-                <Input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Ex.: São Paulo - SP"
-                />
-                <small className="text-muted d-block mt-1">
-                  Se deixar vazio, usa a cidade padrão do backend (<code>SCRAPING_DEFAULT_CITY</code>).
-                </small>
+                <CityStatePicker value={city} onChange={setCity} disabled={loading} />
               </div>
               <div className="mb-3">
                 <Label>Quantidade de registros</Label>

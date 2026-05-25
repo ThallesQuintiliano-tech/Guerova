@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\BrazilLocationSearch;
 use App\Services\SimpleSectorScraper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,8 +11,24 @@ use Throwable;
 class ScrapingController extends Controller
 {
     public function __construct(
-        private readonly SimpleSectorScraper $scraper
+        private readonly SimpleSectorScraper $scraper,
+        private readonly BrazilLocationSearch $locations
     ) {}
+
+    public function locations(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:80'],
+            'uf' => ['nullable', 'string', 'size:2'],
+        ]);
+
+        $uf = isset($validated['uf']) ? strtoupper($validated['uf']) : null;
+
+        return response()->json([
+            'ok' => true,
+            'items' => $this->locations->search($validated['q'], $uf),
+        ]);
+    }
 
     public function run(Request $request): JsonResponse
     {

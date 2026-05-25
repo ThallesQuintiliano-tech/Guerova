@@ -9,7 +9,7 @@ export default function SidebarBrand() {
           LeadMaster AI
         </div>
         <div className="text-white-50 small" style={{ fontSize: '0.7rem', opacity: 0.7 }}>
-          Campanhas · Leads · WhatsApp
+          Meta Ads · Leads · WhatsApp
         </div>
       </div>
     </div>

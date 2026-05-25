@@ -1,5 +1,5 @@
-import React, { Fragment, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Slider from 'react-slick';
 
 import bg1 from '../../../assets/utils/images/originals/city.jpg';
@@ -26,15 +26,63 @@ export default function Login() {
     []
   );
 
-  const { login } = useAuth();
+  const { login, loginWithFacebook, completeFacebookHandoff } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const from = location.state?.from || '/leadmaster/inicio';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fbBusy, setFbBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const handoff = searchParams.get('handoff');
+    if (!handoff) return;
+
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const j = await completeFacebookHandoff(handoff);
+        const target = j?.redirect || from;
+        navigate(target, { replace: true });
+      } catch (e) {
+        if (alive) setError(e?.message || 'Falha ao concluir login Facebook.');
+      } finally {
+        if (alive) setLoading(false);
+        searchParams.delete('handoff');
+        setSearchParams(searchParams, { replace: true });
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [searchParams, setSearchParams, completeFacebookHandoff, navigate, from]);
+
+  useEffect(() => {
+    const fb = searchParams.get('facebook');
+    if (!fb || searchParams.get('handoff')) return;
+    if (fb === 'denied') setError('Login cancelado no Facebook.');
+    else if (fb === 'error') setError('Falha no login Facebook. Verifique META_APP_SECRET e o redirect URI na app Meta.');
+    searchParams.delete('facebook');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const onFacebook = async () => {
+    setError(null);
+    setFbBusy(true);
+    try {
+      await loginWithFacebook(from);
+    } catch (e) {
+      setError(e?.message || 'Não foi possível abrir o Facebook.');
+      setFbBusy(false);
+    }
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -61,21 +109,21 @@ export default function Login() {
                   <div className="slide-img-bg" style={{ backgroundImage: 'url(' + bg1 + ')' }} />
                   <div className="slider-content">
                     <h3>Guerova</h3>
-                    <p>Entre para acessar sua conta e seus dados.</p>
+                    <p>Entre com Facebook — campanhas Meta ligadas automaticamente.</p>
                   </div>
                 </div>
                 <div className="h-100 d-flex justify-content-center align-items-center bg-premium-dark">
                   <div className="slide-img-bg" style={{ backgroundImage: 'url(' + bg3 + ')' }} />
                   <div className="slider-content">
-                    <h3>Admin do sistema</h3>
-                    <p>Gerencie contas e permissões globais.</p>
+                    <h3>Só os seus dados</h3>
+                    <p>Vê apenas as contas de anúncios do teu Facebook.</p>
                   </div>
                 </div>
                 <div className="h-100 d-flex justify-content-center align-items-center bg-sunny-morning">
                   <div className="slide-img-bg opacity-6" style={{ backgroundImage: 'url(' + bg2 + ')' }} />
                   <div className="slider-content">
-                    <h3>Usuários por conta</h3>
-                    <p>Permissões específicas por cliente/empresa.</p>
+                    <h3>Sem token manual</h3>
+                    <p>Um clique para entrar e consultar campanhas.</p>
                   </div>
                 </div>
               </Slider>
@@ -86,65 +134,75 @@ export default function Login() {
               <div className="app-logo" />
               <h4 className="mb-0">
                 <div>Bem-vindo,</div>
-                <span>faça login para continuar.</span>
+                <span>entre com o Facebook para continuar.</span>
               </h4>
               <Row className="divider" />
 
-              <Form onSubmit={onSubmit}>
-                <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label for="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="seu@email.com"
-                        autoComplete="email"
-                        required
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label for="password">Senha</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        autoComplete="current-password"
-                        required
-                      />
-                    </FormGroup>
-                  </Col>
-                </Row>
+              {error && (
+                <Alert color="danger" className="small">
+                  {error}
+                </Alert>
+              )}
 
-                {error && (
-                  <Alert color="danger" className="small">
-                    {error}
-                  </Alert>
-                )}
-
-                <div className="d-flex align-items-center">
-                  <div className="ms-auto">
-                    <Button color="primary" size="lg" type="submit" disabled={loading}>
-                      {loading ? (
-                        <>
-                          <Spinner size="sm" className="me-2" /> Entrando…
-                        </>
-                      ) : (
-                        'Entrar'
-                      )}
-                    </Button>
-                  </div>
+              {loading && searchParams.get('handoff') && (
+                <div className="small text-muted mb-3">
+                  <Spinner size="sm" className="me-2" /> A concluir login…
                 </div>
-              </Form>
-              <p className="text-muted small mt-3 mb-0">
-                Dica: criei um usuário demo: <code>admin@guerova.local</code> / <code>admin123</code>
+              )}
+
+              <Button color="primary" size="lg" className="w-100 mb-3" type="button" disabled={fbBusy || loading} onClick={onFacebook}>
+                {fbBusy ? <Spinner size="sm" className="me-2" /> : null}
+                Entrar com Facebook
+              </Button>
+
+              <p className="small text-muted text-center mb-3">
+                Autoriza perfil e anúncios num único passo. As campanhas da tua conta ficam disponíveis em seguida.
               </p>
+
+              <details className="small">
+                <summary className="text-muted mb-2" style={{ cursor: 'pointer' }}>
+                  Entrar com email e senha (equipa / admin)
+                </summary>
+                <Form onSubmit={onSubmit} className="mt-2">
+                  <Row>
+                    <Col md={6}>
+                      <FormGroup>
+                        <Label for="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="seu@email.com"
+                          autoComplete="email"
+                        />
+                      </FormGroup>
+                    </Col>
+                    <Col md={6}>
+                      <FormGroup>
+                        <Label for="password">Senha</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          autoComplete="current-password"
+                        />
+                      </FormGroup>
+                    </Col>
+                  </Row>
+                  <Button color="outline-secondary" size="lg" type="submit" disabled={loading || fbBusy}>
+                    {loading ? (
+                      <>
+                        <Spinner size="sm" className="me-2" /> Entrando…
+                      </>
+                    ) : (
+                      'Entrar com email'
+                    )}
+                  </Button>
+                </Form>
+              </details>
             </Col>
           </Col>
         </Row>
@@ -152,3 +210,4 @@ export default function Login() {
     </Fragment>
   );
 }
+

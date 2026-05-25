@@ -64,136 +64,106 @@ export const mockActiveListings = [
 export const countActiveListings = () =>
   mockActiveListings.filter((l) => l.status === 'ACTIVE').length;
 
-/** Perguntas do briefing do imóvel (variáveis → IA monta copy / título / botão / ideia de criativo) */
-export const briefingFieldDefinitions = [
-  {
-    id: 'propertyTitle',
-    label: 'Título / como você chama este imóvel no portfólio',
-    type: 'text',
-    placeholder: 'Ex.: Apartamento 2 dorms — Guaiãzes',
-    defaultValue: 'Apartamento 2 dorms — Guaiãzes',
-  },
-  {
-    id: 'propertyType',
-    label: 'Tipo de imóvel',
-    type: 'select',
-    options: ['Apartamento', 'Casa', 'Cobertura', 'Terreno', 'Sala comercial'],
-    defaultValue: 'Apartamento',
-  },
-  {
-    id: 'neighborhood',
-    label: 'Bairro / empreendimento',
-    type: 'text',
-    placeholder: 'Guaiãzes, Sumaré, Solar da Serra…',
-    defaultValue: 'Guaiãzes',
-  },
-  {
-    id: 'city',
-    label: 'Cidade',
-    type: 'text',
-    defaultValue: 'São Paulo — SP',
-  },
-  {
-    id: 'price',
-    label: 'Preço ou faixa (como aparece no anúncio)',
-    type: 'text',
-    defaultValue: 'R$ 289.000',
-  },
-  {
-    id: 'highlights',
-    label: 'Destaques (garagem, andar, reforma, vista…)',
-    type: 'textarea',
-    rows: 2,
-    defaultValue: '2 dormitórios, 1 vaga, portaria 24h, playground.',
-  },
-  {
-    id: 'targetAudience',
-    label: 'Quem você quer atrair? (público)',
-    type: 'textarea',
-    rows: 2,
-    defaultValue: 'Primeira casa, jovens casais, até 15 km do trabalho.',
-  },
-  {
-    id: 'tone',
-    label: 'Tom de voz',
-    type: 'select',
-    options: ['Direto e confiável', 'Emocional / sonho da casa própria', 'Urgência (oportunidade)'],
-    defaultValue: 'Direto e confiável',
-  },
-  {
-    id: 'instagramListingUrl',
-    label: 'Link do post / Reels do imóvel (Instagram)',
-    type: 'text',
-    placeholder: 'https://www.instagram.com/p/…',
-    defaultValue: 'https://www.instagram.com/p/DVjTRKGjNnO/',
-  },
-  {
-    id: 'financing',
-    label: 'Financiamento / entrada',
-    type: 'text',
-    defaultValue: 'Aceita FGTS, assessoria com bancos parceiros.',
-  },
-];
-
-/** Passos exibidos enquanto a IA “monta” a campanha a partir das respostas do briefing */
-export const mockCampaignGenerationSteps = [
-  'Lendo variáveis do briefing do imóvel',
-  'Montando textos para o Gerenciador (títulos, textos principais, descrições)',
-  'Sugerindo botões de chamada para ação e extensões',
-  'Definindo ideias de imagem e roteiro curto de vídeo vertical (9:16)',
-  'Montando público sugerido (idade, raio, interesses) para colar no conjunto de anúncios',
-];
+export {
+  campaignBriefingSections,
+  briefingFieldDefinitions,
+  buildInitialCampaignBriefing,
+  getCampaignDisplayName,
+  parseDailyBudgetCents,
+  mockCampaignGenerationSteps,
+} from './campaignBriefing';
 
 /**
- * Pacote “mastigado” para Meta Business Suite — copiar e colar.
- * No app real, viria do backend após o modelo da IA processar o briefing.
+ * Pacote local (fallback) — espelha CampaignPackFallback no backend.
  */
 export function buildCampaignPackFromBriefing(briefing) {
-  const t = briefing?.propertyTitle || 'Seu imóvel';
-  const bairro = briefing?.neighborhood || 'sua região';
-  const cidade = briefing?.city || '';
-  const preco = briefing?.price || '';
-  const dest = briefing?.highlights || '';
-  const pub = briefing?.targetAudience || '';
+  const name = briefing?.propertyName || briefing?.propertyTitle || 'Seu empreendimento';
+  const preco = briefing?.priceRange || briefing?.price || '';
+  const dest = briefing?.propertyHighlights || briefing?.highlights || '';
+  const geo = briefing?.geoTargeting || '';
+  const audience = briefing?.targetAudience || 'Homens e mulheres, 25 a 55 anos';
+  const urgency = briefing?.urgencyOffer || '';
+  const region = briefing?.adSetName || geo?.slice(0, 40) || 'sua região';
+  const propertyType = briefing?.propertyType || 'Imóveis';
+
+  const primaryA = `🏠 ${name}: ${propertyType}${preco ? ` a partir de ${preco}` : ''}. ${dest ? `${dest}. ` : ''}${urgency ? `${urgency} ` : ''}WhatsApp para planta e visita.`;
+  const primaryB = `Imóvel em ${region}. Público: ${audience}. Toque em Fale conosco.`;
 
   return {
-    metaObjective: 'Mensagens (WhatsApp) — engajamento',
-    headlines: [
-      `${t} — visita esta semana`,
-      `2 dorms em ${bairro} por ${preco}`,
-      `Morar bem em ${bairro.split('—')[0]?.trim() || bairro} sem complicação`,
+    metaObjective: briefing?.campaignObjective || 'Engajamento: Conversas iniciadas pelo WhatsApp',
+    campaign: {
+      objective: briefing?.campaignObjective || 'Engajamento: Conversas iniciadas pelo WhatsApp',
+      name: briefing?.campaignName || name,
+      budgetStrategy: briefing?.budgetStrategy || 'Orçamento do conjunto de anúncios',
+    },
+    adSet: {
+      name: briefing?.adSetName || '',
+      conversionType: briefing?.conversionType || 'WhatsApp Business',
+      targetAudience: audience,
+      geoTargeting: geo,
+      dailyBudget: briefing?.dailyBudget || 'R$ 50,00 por dia',
+      schedulePeriod: briefing?.schedulePeriod || '',
+      interestsSegment: briefing?.interestsSegment || '',
+      customAudience: briefing?.customAudience || '',
+      placements: briefing?.placements || 'Feed e Stories do Instagram e Facebook',
+      bidStrategy: briefing?.bidStrategy || 'Menor custo (automático)',
+    },
+    ad: {
+      propertyName: name,
+      propertyType: briefing?.propertyType || '',
+      priceRange: preco,
+      highlights: dest,
+      format: briefing?.adFormat || '',
+      cta: briefing?.cta || 'Fale conosco',
+      creativeAssets: briefing?.creativeAssets || '',
+      urgency: urgency,
+    },
+    adCopy: {
+      primaryTexts: [primaryA, primaryB],
+      headlines: [`${name} — ${region}`.slice(0, 40), `${preco} · ${propertyType}`.slice(0, 40), `${name} — agende visita`.slice(0, 40)],
+      descriptions: ['Consulte nossos corretores.', 'Agende sua visita pelo WhatsApp.'],
+      whatsappFollowup:
+        'Olá! Vi seu interesse no anúncio. Quer planta, tabela e horários para visita? Responda que envio em seguida.',
+    },
+    creativeSuggestions: {
+      imageIdeas: [
+        `Capa 4:5: fachada ${name} + faixa ${preco}.`,
+        'Carrossel: lazer → sala → quartos → garagem.',
+        'Planta humanizada com mobília leve.',
+      ],
+      videoScript: [
+        'Gancho 3s: “Ainda dá tempo de morar bem nesta região?”',
+        `Meio 12s: tour dos diferenciais: ${dest.split(',')[0] || 'lazer e localização'}.`,
+        'CTA 5s: “Chama no WhatsApp — simulação hoje.”',
+      ],
+      linkCaptionSuggestions: ['Ver fotos no Instagram', 'Simular financiamento', 'Agendar visita'],
+    },
+    metaAdsChecklist: [
+      'Campanha: objetivo Engajamento → conversas WhatsApp; orçamento no conjunto.',
+      'Conjunto: destino WhatsApp Business; público, geo e orçamento diário conforme briefing.',
+      'Anúncio: colar primary text, headline e descrição gerados; CTA Fale conosco; Feed + Stories.',
     ],
-    primaryTexts: [
-      `${dest} Localização em ${bairro}${cidade ? `, ${cidade}` : ''}. Responda no WhatsApp e receba fotos, planta e condições de financiamento em minutos.`,
-      `Procurando imóvel para ${pub}? Este anúncio foi pensado para você. Toque em “Enviar mensagem” e fale com um especialista.`,
-    ],
-    descriptions: [
-      `Financiamento e documentação com acompanhamento. ${briefing?.financing || ''}`,
-      `Agende visita presencial ou tour virtual. Estoque atualizado diariamente.`,
-    ],
-    ctas: ['Enviar mensagem no WhatsApp', 'Saiba mais', 'Ligar agora'],
-    linkCaptionSuggestions: [
-      'Ver fotos e planta no Instagram',
-      'Simular financiamento',
-      'Agendar visita',
-    ],
+    headlines: [`${name} — ${region}`.slice(0, 40), `${preco} · ${propertyType}`.slice(0, 40), `${name} — agende visita`.slice(0, 40)],
+    primaryTexts: [primaryA, primaryB],
+    descriptions: ['Consulte nossos corretores.', 'Agende sua visita pelo WhatsApp.'],
+    ctas: [briefing?.cta || 'Fale conosco'],
+    linkCaptionSuggestions: ['Ver fotos no Instagram', 'Simular financiamento', 'Agendar visita'],
     imageIdeas: [
-      `Foto capa 4:5: fachada do condomínio + selo de preço ${preco}.`,
-      `Carrossel: sala integrada → cozinha → quartos → vaga de garagem.`,
-      `Antes/depois se houver reforma; senão, planta humanizada com mobília leve.`,
+      `Capa 4:5: fachada ${name} + faixa ${preco}.`,
+      'Carrossel: lazer → sala → quartos → garagem.',
     ],
     videoScript: [
-      'Gancho 3s: pergunta “Morar em [bairro] ainda cabe no seu bolso?”',
-      `Meio 12s: tour rápido dos ${dest.split(',')[0] || 'diferenciais'}.`,
-      'CTA 5s: “Chama no WhatsApp que eu te mando a simulação hoje.”',
+      'Gancho 3s: “Ainda dá tempo de morar bem nesta região?”',
+      `Meio 12s: tour: ${dest.split(',')[0] || 'diferenciais'}.`,
+      'CTA 5s: WhatsApp para simulação.',
     ],
     audienceDraft: {
-      age: '25–54',
-      geoText: `Sugestão: raio de 10–15 km a partir de ${bairro}, ${cidade || 'sua base'}.`,
-      interests: ['Imóveis', 'Financiamento imobiliário', 'Compra da primeira casa'],
+      age: audience.match(/\d+\s*a\s*\d+/i)?.[0]?.replace(/\s*a\s*/i, '–') || '25–55',
+      geoText: geo || 'Configurar pin + raio no Gerenciador.',
+      interests: (briefing?.interestsSegment || 'Imóveis').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 4),
     },
     whatsappFollowup:
-      'Olá! Vi seu interesse no anúncio. Quer que eu envie planta + condomínio em PDF e horários para visita?',
+      'Olá! Vi seu interesse no anúncio. Quer planta, tabela e horários para visita? Responda que envio em seguida.',
   };
 }
 

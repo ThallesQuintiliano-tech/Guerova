@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Row, Col, Card, CardBody, CardTitle, Button, Badge, Alert, Spinner, FormGroup, Input, Label } from 'reactstrap';
 import { buildCampaignPackFromBriefing } from './mockData';
+import { getCampaignDisplayName, parseDailyBudgetCents } from './campaignBriefing';
 import { useAuth } from '../auth/AuthContext';
 import { useInternalCampaigns } from './useInternalCampaigns';
 
@@ -10,17 +11,20 @@ export default function PacoteCampanha() {
   const navigate = useNavigate();
   const briefing = state?.briefing;
   const savedPack = state?.savedPack;
+  const packSource = state?.packSource;
+  const packModel = state?.packModel;
+  const packWarning = state?.packWarning;
   const savedCampaign = state?.savedCampaign;
   const { isAuthenticated } = useAuth();
   const { apiFetch } = useAuth();
-  const { create, update } = useInternalCampaigns();
+  const { create, update: updateCampaign } = useInternalCampaigns();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [publishOpen, setPublishOpen] = useState(() => Boolean(state?.openPublish));
   const [publishing, setPublishing] = useState(false);
   const [publishBanner, setPublishBanner] = useState(null);
   const [metaObjective, setMetaObjective] = useState('OUTCOME_ENGAGEMENT');
-  const [dailyBudget, setDailyBudget] = useState(5000); // centavos
+  const [dailyBudget, setDailyBudget] = useState(() => parseDailyBudgetCents(briefing));
   const [adStatus, setAdStatus] = useState('PAUSED');
   const [linkUrl, setLinkUrl] = useState('');
   const [imageHash, setImageHash] = useState('');
@@ -32,7 +36,11 @@ export default function PacoteCampanha() {
     if (!briefing || typeof briefing !== 'object') {
       return null;
     }
-    if (savedPack && typeof savedPack === 'object' && Array.isArray(savedPack.headlines)) {
+    if (
+      savedPack &&
+      typeof savedPack === 'object' &&
+      (Array.isArray(savedPack.headlines) || Array.isArray(savedPack?.adCopy?.headlines))
+    ) {
       return savedPack;
     }
     return buildCampaignPackFromBriefing(briefing);
@@ -75,12 +83,20 @@ export default function PacoteCampanha() {
     }
     setSaving(true);
     try {
-      await create({
-        name: briefing?.propertyTitle || 'Campanha',
-        briefing,
-        pack,
-        status: 'DRAFT',
-      });
+      if (savedCampaign?.id) {
+        await updateCampaign(savedCampaign.id, {
+          name: getCampaignDisplayName(briefing),
+          briefing,
+          pack,
+        });
+      } else {
+        await create({
+          name: getCampaignDisplayName(briefing),
+          briefing,
+          pack,
+          status: 'DRAFT',
+        });
+      }
       navigate('/leadmaster/campanhas', { state: { saved: true } });
     } catch (e) {
       setSaveError(e?.message || 'Falha ao salvar campanha.');
@@ -116,9 +132,10 @@ export default function PacoteCampanha() {
       return;
     }
 
-    const primaryText = pack?.primaryTexts?.[0] || '';
-    const headline = pack?.headlines?.[0] || '';
-    const description = pack?.descriptions?.[0] || '';
+    const primaryText = pack?.adCopy?.primaryTexts?.[0] || pack?.primaryTexts?.[0] || '';
+    const headline = pack?.adCopy?.headlines?.[0] || pack?.headlines?.[0] || '';
+    const description = pack?.adCopy?.descriptions?.[0] || pack?.descriptions?.[0] || '';
+    const campaignLabel = getCampaignDisplayName(briefing);
 
     setPublishing(true);
     try {
@@ -127,19 +144,19 @@ export default function PacoteCampanha() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaign: {
-            name: `${briefing?.propertyTitle || 'Campanha'} (Guerova)`,
+            name: `${briefing?.campaignName || campaignLabel} (Guerova)`,
             objective: metaObjective,
             status: adStatus,
             special_ad_categories: [],
           },
           adset: {
-            name: `${briefing?.propertyTitle || 'Campanha'} — Conjunto`,
-            daily_budget: Number(dailyBudget) || 5000,
+            name: briefing?.adSetName || `${campaignLabel} — Conjunto`,
+            daily_budget: Number(dailyBudget) || parseDailyBudgetCents(briefing),
             status: adStatus,
             targeting,
           },
           creative: {
-            name: `${briefing?.propertyTitle || 'Campanha'} — Creative`,
+            name: `${campaignLabel} — Creative`,
             message: primaryText,
             link,
             headline,
@@ -148,7 +165,7 @@ export default function PacoteCampanha() {
             image_hash: String(imageHash).trim(),
           },
           ad: {
-            name: `${briefing?.propertyTitle || 'Campanha'} — Anúncio`,
+            name: `${campaignLabel} — Anúncio`,
             status: adStatus,
           },
         }),
@@ -158,7 +175,7 @@ export default function PacoteCampanha() {
       let msg = `Publicado na Meta. IDs: campaign ${j?.ids?.campaign_id || '—'} · adset ${j?.ids?.adset_id || '—'} · ad ${j?.ids?.ad_id || '—'}`;
       if (savedCampaign?.id) {
         try {
-          await update(savedCampaign.id, {
+          await updateCampaign(savedCampaign.id, {
             status: adStatus === 'ACTIVE' ? 'ACTIVE' : 'PAUSED',
           });
           msg += ' Status da campanha interna atualizado.';
@@ -209,12 +226,37 @@ export default function PacoteCampanha() {
     }
   };
 
-  const copyBlock = (label, items) => (
+  const settingsRows = [
+    ['Campanha', pack?.campaign?.name || briefing?.campaignName],
+    ['Objetivo', pack?.campaign?.objective || pack?.metaObjective],
+    ['Orçamento', pack?.campaign?.budgetStrategy || briefing?.budgetStrategy],
+    ['Conjunto', pack?.adSet?.name || briefing?.adSetName],
+    ['Conversão', pack?.adSet?.conversionType || briefing?.conversionType],
+    ['Público', pack?.adSet?.targetAudience || briefing?.targetAudience],
+    ['Geo', pack?.adSet?.geoTargeting || briefing?.geoTargeting],
+    ['Budget diário', pack?.adSet?.dailyBudget || briefing?.dailyBudget],
+    ['Período', pack?.adSet?.schedulePeriod || briefing?.schedulePeriod],
+    ['Interesses', pack?.adSet?.interestsSegment || briefing?.interestsSegment],
+    ['Posicionamentos', pack?.adSet?.placements || briefing?.placements],
+    ['Lances', pack?.adSet?.bidStrategy || briefing?.bidStrategy],
+    ['Imóvel', pack?.ad?.propertyName || briefing?.propertyName],
+    ['Tipo', pack?.ad?.propertyType || briefing?.propertyType],
+    ['Preço', pack?.ad?.priceRange || briefing?.priceRange],
+    ['Formato', pack?.ad?.format || briefing?.adFormat],
+    ['CTA', pack?.ad?.cta || briefing?.cta],
+  ].filter(([, v]) => v);
+
+  const copyBlock = (label, items, aiGenerated = false) => (
     <Card className="lm-card-soft mb-3">
       <CardBody>
         <div className="d-flex justify-content-between align-items-center mb-2">
           <CardTitle tag="h6" className="mb-0 text-primary">
             {label}
+            {aiGenerated ? (
+              <Badge color="success" className="ms-2 fw-normal">
+                IA
+              </Badge>
+            ) : null}
           </CardTitle>
           <Button
             size="sm"
@@ -253,6 +295,15 @@ export default function PacoteCampanha() {
             A IA <strong>não substitui</strong> o briefing: ela usa as <strong>variáveis que você preencheu</strong>{' '}
             para gerar textos prontos — você cola nos campos de criação de anúncio (ou usa integração futura).
           </p>
+          {packSource === 'gemini' ? (
+            <Badge color="success" className="mt-2 me-1">
+              IA Gemini{packModel ? ` · ${packModel}` : ''}
+            </Badge>
+          ) : packSource === 'mock_fallback' ? (
+            <Badge color="warning" className="mt-2">
+              Textos locais (sem IA — quota Gemini ou erro de API)
+            </Badge>
+          ) : null}
           {savedCampaign?.id ? (
             <p className="small text-primary mb-0 mt-2">
               <strong>Campanha salva:</strong> {savedCampaign.name || '—'} (ID {savedCampaign.id})
@@ -268,16 +319,10 @@ export default function PacoteCampanha() {
           <Button outline color="secondary" onClick={() => navigate('/leadmaster/campanha/briefing')}>
             Ajustar briefing
           </Button>
-          {savedCampaign?.id ? (
-            <Button color="secondary" outline disabled title="Esta campanha já está salva na lista.">
-              Já salva
-            </Button>
-          ) : (
-            <Button color="primary" disabled={saving} onClick={onSave}>
-              {saving ? <Spinner size="sm" className="me-1" /> : null}
-              Salvar campanha
-            </Button>
-          )}
+          <Button color="primary" disabled={saving} onClick={onSave}>
+            {saving ? <Spinner size="sm" className="me-1" /> : null}
+            {savedCampaign?.id ? 'Guardar alterações' : 'Salvar campanha'}
+          </Button>
           <Button color="dark" outline onClick={() => setPublishOpen((v) => !v)}>
             Publicar na Meta
           </Button>
@@ -287,6 +332,12 @@ export default function PacoteCampanha() {
         </div>
       </div>
 
+      {packWarning && (
+        <Alert color="warning" className="small">
+          {packWarning}
+        </Alert>
+      )}
+
       {saveError && (
         <Alert color="danger" className="small">
           {saveError}
@@ -294,13 +345,14 @@ export default function PacoteCampanha() {
       )}
 
       <Alert color="light" className="border small mb-4">
-        <strong>Publicar sem abrir o Gerenciador?</strong> Existem soluções de mercado que exploram fluxo guiado /
-        API (ex.:{' '}
-        <a href="https://app.giobrain.com/register-landing" target="_blank" rel="noopener noreferrer">
-          GioBrain
-        </a>
-        ). Integração oficial com a Meta exige permissões, revisão de app e políticas — podemos evoluir o produto
-        nessa direção após validar o pacote “copiar e colar”.
+        <strong>Publicação direta na Meta (beta):</strong> o Guerova já pode criar campanha, conjunto, criativo e
+        anúncio via Marketing API quando configurar token e ad account em{' '}
+        <strong>Configurações → Meta Ads</strong>. Para um teste rápido sem briefing, use também a secção{' '}
+        <strong>Campanha de teste na Meta</strong> em <strong>Configurações → Meta Ads</strong>. Em produção alargada, a app Meta pode precisar de{' '}
+        <a href="https://developers.facebook.com/docs/development/release" target="_blank" rel="noopener noreferrer">
+          revisão
+        </a>{' '}
+        e cumprir políticas de anúncios — o pacote abaixo continua útil para copiar textos para o Gerenciador manualmente.
       </Alert>
 
       {publishOpen && (
@@ -315,9 +367,9 @@ export default function PacoteCampanha() {
               </Alert>
             )}
             <Alert color="warning" className="py-2 small">
-              Para publicar via API, configure o token e a ad account em <strong>Configurações → Meta Ads</strong>. Use{' '}
-              <strong>Enviar imagem</strong> abaixo para subir o criativo à ad account; a Meta devolve o{' '}
-              <code>image_hash</code> usado na publicação (ou cole o hash manualmente, se já tiver um).
+              Confirme em <strong>Configurações → Meta Ads</strong> que o token, a ad account e o <strong>Page ID</strong>{' '}
+              estão guardados (o criativo de ligação usa a Página). Envie a imagem com <strong>Enviar imagem</strong> para
+              obter o <code>image_hash</code>, ou cole-o se já existir na biblioteca da conta.
             </Alert>
 
             <Row className="g-3">
@@ -426,49 +478,88 @@ export default function PacoteCampanha() {
       )}
 
       <Row className="g-3">
-        <Col lg={6}>
+        <Col lg={5}>
+          <Card className="lm-card-soft mb-3">
+            <CardBody>
+              <CardTitle tag="h6" className="text-primary mb-3">
+                Configuração (briefing)
+              </CardTitle>
+              <ul className="small mb-0 ps-3">
+                {settingsRows.map(([k, v]) => (
+                  <li key={k} className="mb-2">
+                    <strong>{k}:</strong> {v}
+                  </li>
+                ))}
+              </ul>
+              {pack?.ad?.highlights || briefing?.propertyHighlights ? (
+                <p className="small mt-3 mb-0">
+                  <strong>Diferenciais:</strong> {pack?.ad?.highlights || briefing?.propertyHighlights}
+                </p>
+              ) : null}
+              {pack?.ad?.urgency || briefing?.urgencyOffer ? (
+                <p className="small mt-2 mb-0 text-danger">
+                  <strong>Urgência:</strong> {pack?.ad?.urgency || briefing?.urgencyOffer}
+                </p>
+              ) : null}
+            </CardBody>
+          </Card>
+          {Array.isArray(pack?.metaAdsChecklist) && pack.metaAdsChecklist.length > 0
+            ? copyBlock('Checklist Gerenciador de Anúncios', pack.metaAdsChecklist)
+            : null}
           <Card className="lm-card-soft mb-3">
             <CardBody>
               <CardTitle tag="h6" className="text-primary">
-                Objetivo sugerido (Meta)
+                Público (rascunho)
               </CardTitle>
-              <Badge color="info" className="mb-2">
-                {pack.metaObjective}
-              </Badge>
               <p className="small text-muted mb-0">
-                Público rascunho: {pack.audienceDraft.age} · {pack.audienceDraft.geoText}
+                {pack.audienceDraft?.age} · {pack.audienceDraft?.geoText}
               </p>
               <p className="small mb-0 mt-2">
-                <strong>Interesses sugeridos:</strong> {pack.audienceDraft.interests.join(', ')}
+                <strong>Interesses:</strong> {(pack.audienceDraft?.interests || []).join(', ')}
               </p>
             </CardBody>
           </Card>
-          {copyBlock('Títulos (até 40 caracteres cada)', pack.headlines)}
-          {copyBlock('Textos principais', pack.primaryTexts)}
-          {copyBlock('Descrições', pack.descriptions)}
-          {copyBlock('Botões / CTAs', pack.ctas)}
-          {copyBlock('Legendas de link', pack.linkCaptionSuggestions)}
         </Col>
-        <Col lg={6}>
-          {copyBlock('Ideias de imagem (criativo estático)', pack.imageIdeas)}
-          {copyBlock('Roteiro sugerido — vídeo vertical 9:16 (Reels / Stories)', pack.videoScript)}
+        <Col lg={7}>
+          <h6 className="text-primary mb-3">Textos gerados pela IA (perguntas 19–21)</h6>
+          {copyBlock('19. Texto principal (primary text)', pack.adCopy?.primaryTexts || pack.primaryTexts, true)}
+          {copyBlock('20. Título do anúncio (headline)', pack.adCopy?.headlines || pack.headlines, true)}
+          {copyBlock('21. Descrição (texto secundário)', pack.adCopy?.descriptions || pack.descriptions, true)}
+          {copyBlock('CTA', pack.ctas)}
+          {copyBlock(
+            'Legendas de link',
+            pack.creativeSuggestions?.linkCaptionSuggestions || pack.linkCaptionSuggestions
+          )}
+          {copyBlock('Ideias de imagem / carrossel', pack.creativeSuggestions?.imageIdeas || pack.imageIdeas, true)}
+          {copyBlock(
+            'Roteiro — vídeo 9:16 (Reels / Stories)',
+            pack.creativeSuggestions?.videoScript || pack.videoScript,
+            true
+          )}
           <Card className="lm-card-soft">
             <CardBody>
               <CardTitle tag="h6" className="text-primary">
-                Mensagem de follow-up (WhatsApp)
+                Follow-up WhatsApp
+                <Badge color="success" className="ms-2 fw-normal">
+                  IA
+                </Badge>
               </CardTitle>
               <pre
                 className="small bg-light p-3 rounded border mb-3"
                 style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
               >
-                {pack.whatsappFollowup}
+                {pack.adCopy?.whatsappFollowup || pack.whatsappFollowup}
               </pre>
-              <p className="small text-muted mb-0">
-                Post de referência:{' '}
-                <a href={briefing.instagramListingUrl} target="_blank" rel="noopener noreferrer">
-                  {briefing.instagramListingUrl}
-                </a>
-              </p>
+              {briefing?.instagramListingUrl ? (
+                <p className="small text-muted mb-0">
+                  Criativos: {pack?.ad?.creativeAssets || briefing?.creativeAssets}
+                  <br />
+                  Referência:{' '}
+                  <a href={briefing.instagramListingUrl} target="_blank" rel="noopener noreferrer">
+                    {briefing.instagramListingUrl}
+                  </a>
+                </p>
+              ) : null}
             </CardBody>
           </Card>
         </Col>

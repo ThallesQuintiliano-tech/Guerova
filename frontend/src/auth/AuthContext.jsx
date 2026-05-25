@@ -62,6 +62,39 @@ export function AuthProvider({ children }) {
     [setSession]
   );
 
+  /** Modelo A: redirect para Facebook (perfil + anúncios). */
+  const loginWithFacebook = useCallback(async (redirectPath = '/leadmaster/inicio') => {
+    const q = new URLSearchParams({ redirect: redirectPath });
+    const r = await fetch(`/api/auth/facebook/authorize-url?${q}`, {
+      headers: { Accept: 'application/json' },
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok || !j?.url) {
+      throw new Error(j?.error || 'Não foi possível iniciar login com Facebook.');
+    }
+    window.location.href = j.url;
+  }, []);
+
+  const completeFacebookHandoff = useCallback(
+    async (handoff) => {
+      const r = await fetch('/api/auth/facebook/handoff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ handoff }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) {
+        throw new Error(j?.error || 'Falha ao concluir login Facebook.');
+      }
+      setSession(j.token, j.user, j.accounts);
+      if (j.defaultAccountId) {
+        setActiveAccountId(String(j.defaultAccountId));
+      }
+      return j;
+    },
+    [setSession, setActiveAccountId]
+  );
+
   const logout = useCallback(async () => {
     try {
       if (token) await apiFetch('/api/auth/logout', { method: 'POST' });
@@ -77,8 +110,13 @@ export function AuthProvider({ children }) {
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || 'Falha ao carregar sessão.');
     setUser(j.user || null);
-    setAccounts(Array.isArray(j.accounts) ? j.accounts : []);
-    if (!accountId && j.accounts?.[0]?.id) setActiveAccountId(String(j.accounts[0].id));
+    const list = Array.isArray(j.accounts) ? j.accounts : [];
+    setAccounts(list);
+    if (list.length === 1 && list[0]?.id) {
+      setActiveAccountId(String(list[0].id));
+    } else if (!accountId && list[0]?.id) {
+      setActiveAccountId(String(list[0].id));
+    }
   }, [apiFetch, token, accountId, setActiveAccountId]);
 
   useEffect(() => {
@@ -110,11 +148,26 @@ export function AuthProvider({ children }) {
       setActiveAccountId,
       apiFetch,
       login,
+      loginWithFacebook,
+      completeFacebookHandoff,
       logout,
       refreshMe,
       isAuthenticated: Boolean(token),
     }),
-    [booting, token, user, accounts, accountId, setActiveAccountId, apiFetch, login, logout, refreshMe]
+    [
+      booting,
+      token,
+      user,
+      accounts,
+      accountId,
+      setActiveAccountId,
+      apiFetch,
+      login,
+      loginWithFacebook,
+      completeFacebookHandoff,
+      logout,
+      refreshMe,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
