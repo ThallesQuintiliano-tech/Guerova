@@ -441,11 +441,12 @@ export default function Campanhas() {
             <Alert color="warning" className="py-2 small mb-0 mt-2">
               A Meta confirma <strong>{metaCampaignsTotal ?? 0} campanha(s)</strong> na conta{' '}
               <strong>{metaAccountName || metaAdAccountId}</strong> (<code>{metaAdAccountId}</code>) para o utilizador do
-              token (<em>{metaTokenUser?.name || '—'}</em>). Se no Gestor de Anúncios vês campanhas, verifica: (1) no
-              topo do Gestor, o ID da conta é <code>1743722799947064</code>; (2) estás logado no Facebook com o mesmo
-              utilizador que gerou o token; (3) gera um token novo com <code>ads_read</code> +{' '}
-              <code>ads_management</code> na app Meta <strong>Guerova</strong> e guarda em{' '}
-              <Link to="/leadmaster/configuracao">Configurações</Link>.
+              token (<em>{metaTokenUser?.name || '—'}</em>). Esta conta realmente não tem campanhas no período. Se as
+              suas campanhas estão noutra conta, troque a <strong>Conta de anúncios (Meta)</strong> no seletor acima. Para
+              ver tudo de todos os clientes de uma vez, abra{' '}
+              <Link to="/leadmaster/relatorio">Relatório (clientes)</Link>. Se mesmo assim faltarem campanhas: confirme que
+              está autenticado no Facebook com o mesmo utilizador que gerou o token e que o token tem{' '}
+              <code>ads_read</code> + <code>ads_management</code>.
             </Alert>
           )}
           {insightsLoading && metaCampaigns.length > 0 && (

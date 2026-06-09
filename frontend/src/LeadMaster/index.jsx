@@ -7,6 +7,7 @@ import PacoteCampanha from './PacoteCampanha';
 import Refinamento from './Refinamento';
 import Dashboard from './Dashboard';
 import Campanhas from './Campanhas';
+import Relatorio from './Relatorio';
 import CRM from './CRM';
 import WhatsApp from './WhatsApp';
 import Scraping from './Scraping';
@@ -25,6 +26,7 @@ export default function LeadMasterRoutes() {
       <Route path="campanha/pacote" element={<PacoteCampanha />} />
       <Route path="campanha/refinamento" element={<Refinamento />} />
       <Route path="dashboard" element={<Dashboard />} />
+      <Route path="relatorio" element={<Relatorio />} />
       <Route path="campanhas" element={<Campanhas />} />
       <Route path="crm" element={<CRM />} />
       <Route path="leads/:leadId" element={<LeadDetail />} />

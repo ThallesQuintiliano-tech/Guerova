@@ -85,6 +85,8 @@ export function useMetaAdsCampaigns(selectedAdAccountId = '') {
       }
       const campaigns = Array.isArray(j1.campaigns) ? j1.campaigns : [];
       setMetaCampaigns(campaigns);
+      // Mostra sempre a conta efetivamente consultada (pode diferir do default da conexão).
+      if (j1.adAccountId) setAdAccountId(j1.adAccountId);
       setMetaAccountName(j1.adAccountName || null);
       setMetaCampaignsTotal(typeof j1.campaignsTotal === 'number' ? j1.campaignsTotal : null);
       setMetaTokenUser(j1.tokenUser || null);

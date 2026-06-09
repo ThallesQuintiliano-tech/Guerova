@@ -135,7 +135,7 @@ async function createSocket({ preserveAuth = false } = {}) {
     printQRInTerminal: false,
     /** macOS/Chrome — identificador aceito pelo pareamento (evita “não é possível conectar” no telefone). */
     browser: Browsers.macOS('Chrome'),
-    /** Sincroniza agenda (nomes); mensagens antigas não entram no painel (filtro no store). */
+    /** Sincroniza agenda + histórico; o store só preenche as conversas acompanhadas pelo painel. */
     syncFullHistory: true,
     markOnlineOnConnect: false,
     getMessage: async () => undefined,

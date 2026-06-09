@@ -29,6 +29,15 @@ let systemChatJids = new Set();
 /** @type {Map<string, string>} */
 let customChatNames = new Map();
 
+/**
+ * Histórico bruto recebido do telemóvel (todas as conversas) guardado em memória.
+ * Não entra no painel sozinho: serve para preencher uma conversa com as mensagens
+ * antigas quando ela passa a ser acompanhada pelo Guerova.
+ * @type {Map<string, object[]>}
+ */
+const historyByJid = new Map();
+const HISTORY_BUFFER_LIMIT = 500;
+
 let saveStateTimer = null;
 
 const SKIP_MESSAGE_TYPES = new Set([
@@ -419,6 +428,7 @@ export function registerSystemChat(jid, customName = null) {
   }
   chats.set(preferred, chat);
 
+  backfillTrackedFromHistory(preferred);
   saveSystemState();
 }
 
@@ -971,11 +981,53 @@ function appendMessages(jid, msgs) {
   scheduleSaveSystemState();
 }
 
+/** Guarda em memória as mensagens antigas que o telemóvel sincroniza após o pareamento. */
+function bufferHistoryMessages(msgs) {
+  for (const m of msgs || []) {
+    const remote = m?.key?.remoteJid;
+    const id = m?.key?.id;
+    if (!remote || !id || remote.includes('@broadcast')) {
+      continue;
+    }
+    const jid = preferredChatJid(remote);
+    const arr = historyByJid.get(jid) || [];
+    if (arr.some((x) => x.key?.id === id)) {
+      continue;
+    }
+    arr.push(m);
+    if (arr.length > HISTORY_BUFFER_LIMIT) {
+      arr.splice(0, arr.length - HISTORY_BUFFER_LIMIT);
+    }
+    historyByJid.set(jid, arr);
+  }
+}
+
+/** Preenche uma conversa acompanhada pelo painel com o histórico antigo já recebido. */
+function backfillTrackedFromHistory(jid) {
+  if (!jid || !isTrackedChat(jid)) {
+    return;
+  }
+  const key = chatDedupeKey(jid);
+  const collected = [];
+  for (const [bufJid, arr] of historyByJid) {
+    if (chatDedupeKey(bufJid) === key) {
+      collected.push(...arr);
+    }
+  }
+  if (collected.length) {
+    appendMessages(preferredChatJid(jid), collected);
+  }
+}
+
 export function bindStoreEvents(ev) {
-  /** Só agenda (nomes) — não importa conversas antigas do telemóvel. */
-  ev.on('messaging-history.set', ({ contacts: contactList }) => {
+  /** Agenda (nomes) + histórico antigo das conversas que o painel acompanha. */
+  ev.on('messaging-history.set', ({ contacts: contactList, messages: messageList }) => {
     for (const contact of contactList || []) {
       registerContact(contact);
+    }
+    bufferHistoryMessages(messageList);
+    for (const jid of systemChatJids) {
+      backfillTrackedFromHistory(jid);
     }
     refreshTrackedChatTitles();
   });
@@ -1174,15 +1226,19 @@ export function getChatMessages(jid, limit = 80) {
   }
   arr.sort((a, b) => a.ts - b.ts);
 
-  return arr.slice(-limit).map((m) => ({
-    id: m.id,
-    type: m.type || 'text',
-    text: m.text,
-    caption: m.caption || '',
-    fromMe: m.fromMe,
-    at: m.ts,
-    hasMedia: Boolean(m.mediaFile || m.hasMedia),
-  }));
+  return arr.slice(-limit).map((m) => {
+    /** Só expõe mídia depois de baixada (evita 404 em fotos antigas que já expiraram). */
+    const mediaReady = Boolean(m.mediaFile) || Boolean(findMediaAbsolutePath(preferred, m.id));
+    return {
+      id: m.id,
+      type: m.type || 'text',
+      text: m.text,
+      caption: m.caption || '',
+      fromMe: m.fromMe,
+      at: m.ts,
+      hasMedia: mediaReady,
+    };
+  });
 }
 
 export function resolveStoredMediaPath(jid, messageId) {

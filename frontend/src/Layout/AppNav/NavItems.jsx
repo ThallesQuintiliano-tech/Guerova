@@ -10,9 +10,9 @@ export const UpgradeNav = [
 export const LeadMasterNav = [
   { icon: 'pe-7s-home', label: 'Início', to: '/leadmaster/inicio' },
   { icon: 'pe-7s-albums', label: 'Campanhas Meta', to: '/leadmaster/campanhas' },
+  { icon: 'pe-7s-news-paper', label: 'Relatório (clientes)', to: '/leadmaster/relatorio' },
   { icon: 'pe-7s-users', label: 'Leads (CRM)', to: '/leadmaster/crm' },
   { icon: 'pe-7s-chat', label: 'WhatsApp', to: '/leadmaster/whatsapp' },
-  { icon: 'pe-7s-graph', label: 'Relatórios', to: '/leadmaster/dashboard' },
   { icon: 'pe-7s-download', label: 'Scraping', to: '/leadmaster/scraping' },
   { icon: 'pe-7s-graph1', label: 'Score', to: '/leadmaster/score' },
   { icon: 'pe-7s-shield', label: 'Admin (usuários)', to: '/leadmaster/admin/usuarios' },
