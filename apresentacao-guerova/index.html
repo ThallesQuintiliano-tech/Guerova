@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guerova LeadMaster — Apresentação (mock completo)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --sidebar-w: 252px;
+      --sidebar: #1a2332;
+      --sidebar-text: #94a3b8;
+      --sidebar-active: #2563eb;
+      --bg: #f0f2f5;
+      --surface: #fff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(15,23,42,.06);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .shell { display: flex; height: 100vh; overflow: hidden; }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .brand {
+      padding: 1.1rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .brand strong { color: #fff; font-size: 1rem; display: block; }
+    .brand small { font-size: .68rem; opacity: .75; }
+    .nav { flex: 1; overflow-y: auto; padding: .4rem 0; }
+    .nav-group { padding: .5rem 1rem .25rem; font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; opacity: .5; }
+    .nav-btn {
+      display: flex; align-items: center; gap: .65rem;
+      width: 100%; padding: .58rem 1rem;
+      border: none; background: none; color: inherit;
+      font: inherit; text-align: left; cursor: pointer;
+      transition: background .12s, color .12s;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,.06); color: #e2e8f0; }
+    .nav-btn.active { background: var(--sidebar-active); color: #fff; font-weight: 600; }
+    .nav-btn .ico { width: 20px; text-align: center; font-size: .95rem; }
+    .sidebar-foot { padding: .75rem 1rem; font-size: .68rem; border-top: 1px solid rgba(255,255,255,.08); opacity: .6; }
+
+    /* Main */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: .65rem 1.25rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      box-shadow: var(--shadow);
+    }
+    .topbar h1 { font-size: .95rem; font-weight: 600; }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; font-size: .8rem; color: var(--muted); }
+    .pill-demo { background: #fef3c7; color: #92400e; padding: .2rem .55rem; border-radius: 999px; font-size: .65rem; font-weight: 700; }
+    .credits { font-variant-numeric: tabular-nums; }
+
+    .viewport { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem 2rem; }
+    .view { display: none; animation: fade .2s ease; }
+    .view.active { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* Components */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.15rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow);
+    }
+    .card-h { font-size: .82rem; font-weight: 700; margin-bottom: .75rem; color: var(--text); }
+    .card-sub { font-size: .78rem; color: var(--muted); margin: -.5rem 0 .75rem; }
+
+    .grid { display: grid; gap: 1rem; }
+    .g2 { grid-template-columns: repeat(2, 1fr); }
+    .g3 { grid-template-columns: repeat(3, 1fr); }
+    .g4 { grid-template-columns: repeat(4, 1fr); }
+    .g5 { grid-template-columns: repeat(5, 1fr); }
+    @media (max-width: 1200px) { .g4, .g5 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .sidebar { width: 56px; }
+      .brand span, .nav-btn span.lbl, .nav-group, .sidebar-foot { display: none; }
+      .g2 { grid-template-columns: 1fr; }
+    }
+
+    .kpi .lbl { font-size: .65rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+    .kpi .val { font-size: 1.45rem; font-weight: 700; margin: .2rem 0; letter-spacing: -.02em; }
+    .kpi .delta { font-size: .76rem; font-weight: 600; color: var(--success); }
+    .kpi .delta.neu { color: var(--muted); }
+    .kpi .delta.down { color: var(--danger); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .48rem 1rem; border-radius: 999px; border: none;
+      font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer;
+      transition: background .12s, transform .08s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-ghost { background: #fff; border: 1px solid var(--border); color: var(--text); }
+    .btn-sm { padding: .32rem .65rem; font-size: .74rem; border-radius: 6px; }
+    .btn-link { background: none; border: none; color: var(--primary); cursor: pointer; font: inherit; font-size: .82rem; padding: 0; }
+
+    .tag { display: inline-block; padding: .12rem .45rem; border-radius: 999px; font-size: .65rem; font-weight: 700; }
+    .tag-ok { background: #dcfce7; color: #166534; }
+    .tag-warn { background: #fef3c7; color: #92400e; }
+    .tag-muted { background: #f1f5f9; color: var(--muted); }
+    .tag-blue { background: #dbeafe; color: #1d4ed8; }
+
+    .alert { padding: .65rem .9rem; border-radius: 8px; font-size: .82rem; margin-bottom: 1rem; border: 1px solid; }
+    .alert-info { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+    .alert-warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    th { text-align: left; font-size: .65rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: .5rem .55rem; border-bottom: 2px solid var(--border); white-space: nowrap; }
+    td { padding: .52rem .55rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    tr:hover td { background: #f8fafc; }
+    .tbl-wrap { overflow-x: auto; }
+
+    .tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: 1rem; }
+    .tab {
+      padding: .38rem .8rem; border-radius: 6px; border: 1px solid var(--border);
+      background: #fff; font-size: .78rem; cursor: pointer; font-family: inherit;
+    }
+    .tab.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .field { margin-bottom: .8rem; }
+    .field label { display: block; font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: .25rem; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: .45rem .6rem; border: 1px solid var(--border);
+      border-radius: 6px; font: inherit; font-size: .84rem;
+    }
+    .field textarea { min-height: 72px; resize: vertical; }
+
+    .hero { font-size: 1.65rem; font-weight: 700; line-height: 1.2; margin-bottom: .65rem; letter-spacing: -.02em; }
+    .hero em { font-style: normal; color: var(--primary); }
+    .muted { color: var(--muted); font-size: .88rem; }
+
+    .listing-row { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: .35rem; }
+    .listing { min-width: 270px; border-top: 4px solid var(--accent, var(--primary)); }
+
+    .kanban { display: flex; gap: .7rem; overflow-x: auto; padding-bottom: .5rem; }
+    .k-col { min-width: 210px; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: .6rem; }
+    .k-col h4 { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .45rem; }
+    .k-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: .6rem; margin-bottom: .45rem; font-size: .78rem; cursor: pointer; }
+    .k-card:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+
+    .wa { display: grid; grid-template-columns: 260px 1fr; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; min-height: 400px; background: #fff; }
+    .wa-list { border-right: 1px solid var(--border); overflow-y: auto; }
+    .wa-item { padding: .7rem .85rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; font-size: .8rem; }
+    .wa-item.on, .wa-item:hover { background: #eff6ff; }
+    .wa-item .t { float: right; font-size: .68rem; color: var(--muted); }
+    .wa-head { padding: .6rem 1rem; background: #075e54; color: #fff; font-size: .84rem; }
+    .wa-msgs { padding: 1rem; background: #e5ddd5; min-height: 280px; display: flex; flex-direction: column; gap: .45rem; }
+    .bubble { max-width: 78%; padding: .45rem .7rem; border-radius: 8px; font-size: .8rem; line-height: 1.4; }
+    .bubble.out { align-self: flex-end; background: #dcf8c6; }
+    .bubble.in { align-self: flex-start; background: #fff; }
+    .wa-input { display: flex; gap: .5rem; padding: .6rem; border-top: 1px solid var(--border); }
+    .wa-input input { flex: 1; border: 1px solid var(--border); border-radius: 999px; padding: .45rem .85rem; font: inherit; }
+
+    .funnel-bar {
+      background: linear-gradient(90deg, #4f46e5, #2563eb);
+      color: #fff; border-radius: 6px; padding: .45rem .7rem;
+      font-size: .76rem; margin-bottom: .35rem;
+    }
+
+    .chart-bars { display: flex; align-items: flex-end; gap: .55rem; height: 160px; }
+    .chart-col { flex: 1; text-align: center; font-size: .68rem; color: var(--muted); }
+    .chart-col .bar { width: 100%; max-width: 36px; margin: 0 auto .2rem; border-radius: 4px 4px 0 0; background: var(--primary); }
+    .chart-col .bar.alt { background: #94a3b8; }
+
+    .donut-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .donut { width: 110px; height: 110px; border-radius: 50%; flex-shrink: 0; }
+    .donut-leg { list-style: none; font-size: .78rem; }
+    .donut-leg li { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .3rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: .35rem; }
+
+    .map-br { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; max-width: 320px; }
+    .map-uf {
+      padding: .45rem; text-align: center; border-radius: 6px; font-size: .72rem; font-weight: 700; color: #fff;
+    }
+
+    .progress { height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+    .progress > div { height: 100%; background: linear-gradient(90deg, #1d4ed8, #3b82f6); border-radius: 999px; }
+
+    .gauge-wrap { text-align: center; }
+    .gauge {
+      width: 130px; height: 130px; border-radius: 50%; margin: 0 auto;
+      background: conic-gradient(var(--success) 0% 72%, #e2e8f0 72% 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .gauge-in {
+      width: 88px; height: 88px; background: #fff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; font-weight: 700; color: var(--success);
+    }
+
+    .loader { text-align: center; padding: 3rem 1rem; }
+    .spinner {
+      width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: var(--primary);
+      border-radius: 50%; margin: 0 auto 1rem; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .breadcrumb { font-size: .78rem; color: var(--muted); margin-bottom: 1rem; }
+    .breadcrumb button { background: none; border: none; color: var(--primary); cursor: pointer; font: inherit; }
+
+    .filters { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; margin-bottom: 1rem; }
+    .filters .field { margin: 0; min-width: 130px; }
+
+    .state-bar { display: grid; grid-template-columns: 28px 1fr 72px; gap: .5rem; align-items: center; margin-bottom: .4rem; font-size: .78rem; }
+    .state-bar .track { background: #f1f5f9; border-radius: 4px; height: 8px; overflow: hidden; }
+    .state-bar .fill { height: 100%; background: var(--primary); border-radius: 4px; }
+
+    .lead-tabs { display: flex; gap: .25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+    .lead-tab { padding: .35rem .75rem; border: none; background: none; font: inherit; font-size: .8rem; cursor: pointer; color: var(--muted); border-radius: 6px 6px 0 0; }
+    .lead-tab.on { color: var(--primary); font-weight: 600; background: #eff6ff; }
+
+    code { font-size: .85em; background: #f1f5f9; padding: .1rem .35rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <strong>LeadMaster AI</strong>
+        <span>Guerova · apresentação mock</span>
+      </div>
+      <nav class="nav" id="sidebar-nav"></nav>
+      <div class="sidebar-foot">Sem login · dados fictícios · offline OK</div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h1 id="view-title">Início</h1>
+        <div class="topbar-right">
+          <span class="pill-demo">DEMO</span>
+          <span class="credits">Créditos IA: <strong>1.250</strong> / 2.000</span>
+          <span>João Silva</span>
+        </div>
+      </header>
+      <div class="viewport" id="viewport"></div>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  'use strict';
+
+  const NAV = [
+    { group: 'Principal' },
+    { id: 'inicio', label: 'Início', icon: '⌂' },
+    { id: 'campanhas', label: 'Campanhas Meta', icon: '▣' },
+    { id: 'relatorio', label: 'Relatório (clientes)', icon: '▤' },
+    { id: 'dashboard', label: 'Dashboard BI', icon: '◔' },
+    { group: 'Operação' },
+    { id: 'crm', label: 'Leads (CRM)', icon: '☰' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+    { id: 'scraping', label: 'Scraping', icon: '↓' },
+    { group: 'Campanha IA' },
+    { id: 'briefing', label: 'Briefing imóvel', icon: '✎' },
+    { id: 'gerando', label: 'Gerando (IA)', icon: '◌' },
+    { id: 'pacote', label: 'Pacote campanha', icon: '▦' },
+    { id: 'refinamento', label: 'Refinamento', icon: '↻' },
+    { group: 'Admin' },
+    { id: 'score', label: 'Score (Serasa)', icon: '◎' },
+    { id: 'admin', label: 'Admin usuários', icon: '👤' },
+    { id: 'config', label: 'Configurações', icon: '⚙' },
+  ];
+
+  const D = {
+    listings: [
+      { title: 'Apartamento 2 dorms — Guaiãzes', loc: 'Guaiãzes · São Paulo', price: 'R$ 289.000', beds: 2, accent: '#6366f1', headline: '2 quartos com garagem — entrada facilitada', text: 'Apartamento pronto para morar, portaria 24h. Chame no WhatsApp.', cta: 'Enviar mensagem' },
+      { title: 'Sumaré — condomínio fechado', loc: 'Sumaré · SP', price: 'R$ 410.000', beds: 3, accent: '#0ea5e9', headline: 'Condomínio com lazer completo', text: 'Famílias que buscam segurança. Financiamento assessorado.', cta: 'Saiba mais' },
+      { title: 'Solar da Serra', loc: 'Mogi · SP', price: 'Sob consulta', beds: null, accent: '#22c55e', headline: 'Quer vender ou comprar na região?', text: 'Equipe especializada em permuta e avaliação.', cta: 'Falar com corretor' },
+    ],
+    campaigns: [
+      { name: 'Guaiãzes 2Q — Engajamento WA', level: 'Campanha', status: 'ACTIVE', spend: 412.3, results: 89, budget: 50 },
+      { name: 'Guaiãzes — SP 15km', level: 'Conjunto', status: 'ACTIVE', spend: 298.1, results: 52, budget: 50 },
+      { name: 'Anúncio — Carrossel planta', level: 'Anúncio', status: 'ACTIVE', spend: 186.2, results: 41, budget: null },
+      { name: 'Remarketing 30d', level: 'Campanha', status: 'PAUSED', spend: 112, results: 9, budget: 25 },
+    ],
+    internalCampaigns: [
+      { name: 'Guaiãzes Jun/2025 (Guerova)', status: 'PAUSED', created: '12/06/2025', model: 'gemini-2.5-flash' },
+      { name: 'Sumaré — teste vídeo', status: 'DRAFT', created: '08/06/2025', model: 'fallback' },
+    ],
+    relatorio: {
+      totals: { impressions: 48200, clicks: 1240, spend: 892.5, reach: 32100, conversations: 186, ctr: 2.57, cpc: 0.72, cpm: 18.5 },
+      rows: [
+        { name: 'Guaiãzes 2Q — Engajamento WA', st: 'ACTIVE', imp: 18200, clk: 520, spend: 412.3, conv: 89 },
+        { name: 'Sumaré — Tráfego', st: 'ACTIVE', imp: 15600, clk: 380, spend: 298.1, conv: 52 },
+        { name: 'Remarketing 30d', st: 'PAUSED', imp: 14400, clk: 340, spend: 182.1, conv: 45 },
+      ],
+    },
+    bi: {
+      kpis: [
+        { l: 'Mentorados Ativos', v: '250', d: '↑ 18 este mês' },
+        { l: 'Imóveis Vendidos', v: '87', d: '↑ 12% MoM' },
+        { l: 'Ticket Médio', v: 'R$49.4k', d: 'Estável', neu: 1 },
+        { l: 'Gasto Tráfego', v: 'R$84.2k', d: '↑ 5.1% MoM' },
+        { l: 'ROI Tráfego', v: '51x', d: '↑ Excelente' },
+      ],
+      goal: { y: 2025, pct: 43, ach: 4300000, tgt: 10000000, delta: 8.3 },
+      funnel: [
+        { s: 'Impressões (Alcance)', n: 185000, sc: 100, tc: 100 },
+        { s: 'Cliques no Anúncio', n: 12400, sc: 7, tc: 6.7 },
+        { s: 'Acessos ao WhatsApp', n: 4820, sc: 39, tc: 2.6 },
+        { s: 'Conversas Iniciadas', n: 2100, sc: 44, tc: 1.1 },
+        { s: 'Leads Qualificados', n: 620, sc: 30, tc: 0.3 },
+        { s: 'Propostas Enviadas', n: 142, sc: 23, tc: 0.1 },
+        { s: 'Vendas Realizadas', n: 87, sc: 61, tc: 0.0 },
+      ],
+      funnelTotal: 1.74,
+      monthly: [
+        { m: 'Jan', v: 520, t: 11.2 }, { m: 'Fev', v: 610, t: 12.8 }, { m: 'Mar', v: 780, t: 14.1 },
+        { m: 'Abr', v: 690, t: 13.5 }, { m: 'Mai', v: 850, t: 15.8 }, { m: 'Jun', v: 850, t: 16.8 },
+      ],
+      types: [
+        { n: 'Apartamento', p: 38, c: '#4f46e5' }, { n: 'Casa', p: 27, c: '#2563eb' },
+        { n: 'Terreno', p: 15, c: '#0ea5e9' }, { n: 'Comercial', p: 12, c: '#14b8a6' }, { n: 'Lote', p: 8, c: '#8b5cf6' },
+      ],
+      sources: [
+        { n: 'Meta Ads', p: 68, c: '#1877f2' }, { n: 'Google Ads', p: 18, c: '#ea4335' },
+        { n: 'Orgânico', p: 9, c: '#22c55e' }, { n: 'Indicação', p: 5, c: '#f59e0b' },
+      ],
+      states: [
+        { uf: 'RJ', r: 812, cnt: 20 }, { uf: 'SP', r: 762, cnt: 24 }, { uf: 'SC', r: 356, cnt: 8 },
+        { uf: 'MG', r: 323, cnt: 11 }, { uf: 'PR', r: 297, cnt: 8 }, { uf: 'RS', r: 210, cnt: 6 },
+        { uf: 'PE', r: 114, cnt: 4 }, { uf: 'GO', r: 85, cnt: 2 }, { uf: 'BA', r: 79, cnt: 3 },
+      ],
+      mentorados: [
+        { r: 1, n: 'Priscila Gomes', lv: 'A', uf: 'GO', buy: 122000, sell: 189000, profit: 67000, tr: 860, roi: 77.9 },
+        { r: 2, n: 'Amanda Barbosa', lv: 'A', uf: 'SP', buy: 112000, sell: 178000, profit: 66000, tr: 930, roi: 71 },
+        { r: 3, n: 'Thiago Oliveira', lv: 'A', uf: 'SP', buy: 122000, sell: 188000, profit: 66000, tr: 670, roi: 98.5 },
+        { r: 4, n: 'Gabriel Gomes', lv: 'A', uf: 'RJ', buy: 112000, sell: 177000, profit: 65000, tr: 740, roi: 87.8 },
+        { r: 5, n: 'Isabela Oliveira', lv: 'A', uf: 'RJ', buy: 113000, sell: 177000, profit: 64000, tr: 550, roi: 116.4 },
+        { r: 6, n: 'Gustavo Moraes', lv: 'A', uf: 'PR', buy: 133000, sell: 194000, profit: 61000, tr: 990, roi: 61.6 },
+        { r: 7, n: 'Marcelo Oliveira', lv: 'A', uf: 'SC', buy: 103000, sell: 164000, profit: 61000, tr: 440, roi: 138.6 },
+        { r: 8, n: 'Bruno Pereira', lv: 'A', uf: 'RJ', buy: 113000, sell: 173000, profit: 60000, tr: 940, roi: 63.8 },
+      ],
+      prospecting: [
+        { n: 'Mariana Costa', uf: 'SC', tr: 1000, leads: 49 }, { n: 'Rodrigo Oliveira', uf: 'SP', tr: 900, leads: 92 },
+        { n: 'Diego Araújo', uf: 'SC', tr: 960, leads: 79 }, { n: 'Felipe Ribeiro', uf: 'MG', tr: 1000, leads: 66 },
+      ],
+      traffic: [
+        { n: 'Gustavo Moraes', sp: 990, rev: 61000, roi: 61.6 }, { n: 'Mariana Almeida', sp: 960, rev: 53000, roi: 55.2 },
+        { n: 'Carlos Ribeiro', sp: 960, rev: 35000, roi: 36.5 }, { n: 'Priscila Lima', sp: 960, rev: 27000, roi: 28.1 },
+        { n: 'Camila Araújo', sp: 990, rev: 10000, roi: 10.1 }, { n: 'Mariana Costa', sp: 1000, rev: null, roi: null },
+      ],
+    },
+    kanban: {
+      Novo: [
+        { id: 'l1', name: 'João Silva', phone: '(11) 98765-4321', ctx: 'Apartamento 2 quartos' },
+        { id: 'l2', name: 'Maria Santos', phone: '(11) 91234-5678', ctx: 'Casa com quintal' },
+      ],
+      Contato: [
+        { id: 'l3', name: 'Pedro Oliveira', phone: '(11) 99888-7766', ctx: 'Financiamento Caixa' },
+        { id: 'l4', name: 'Ana Costa', phone: '(11) 97777-6655', ctx: 'Investimento locação' },
+      ],
+      Qualificado: [
+        { id: 'l5', name: 'Carlos Lima', phone: '(11) 96655-4433', ctx: 'Visita sábado 10h' },
+        { id: 'l6', name: 'Fernanda Souza', phone: '(11) 95544-3322', ctx: 'Permuta avaliada' },
+      ],
+      Fechado: [
+        { id: 'l7', name: 'Ricardo Almeida', phone: '(11) 94433-2211', ctx: 'Minuta assinada', val: 'R$ 18.500' },
+        { id: 'l8', name: 'Juliana Mendes', phone: '(11) 93322-1100', ctx: 'Entrada + FGTS', val: 'R$ 12.200' },
+      ],
+    },
+    leadDetail: {
+      l1: {
+        name: 'João Silva', phone: '(11) 98765-4321', email: 'joao.silva@email.com', stage: 'Novo',
+        listing: 'Apartamento 2 dorms — Guaiãzes',
+        msgs: [
+          { who: 'Corretor', via: 'WhatsApp', t: '07/04 18:02', txt: 'Olá João! Vi seu interesse no Guaiãzes. Posso mandar a planta?' },
+          { who: 'Lead', via: 'WhatsApp', t: '07/04 18:05', txt: 'Oi, pode sim.' },
+          { who: 'Corretor', via: 'WhatsApp', t: '07/04 18:06', txt: 'Segue o PDF. Quer agendar visita sábado?' },
+          { who: 'Lead', via: 'WhatsApp', t: '08/04 09:12', txt: 'Tem planta do 2 quartos?' },
+        ],
+      },
+    },
+    wa: {
+      connected: true,
+      chats: [
+        { name: 'João Silva', last: 'Tem planta do 2 quartos?', time: '09:12' },
+        { name: 'Maria Santos', last: 'Qual o valor do condomínio?', time: 'Ontem' },
+        { name: 'Pedro Oliveira', last: 'Consigo visitar amanhã?', time: 'Seg' },
+        { name: 'Ana Costa', last: 'Obrigada pelos links!', time: 'Dom' },
+        { name: 'Ricardo Almeida', last: 'Minuta assinada — obrigado!', time: '30/03' },
+      ],
+      thread: [
+        { out: 1, t: '18:02', txt: 'Olá João! Vi seu interesse no anúncio do Guaiãzes. Posso te mandar a planta?' },
+        { out: 0, t: '18:05', txt: 'Oi, pode sim.' },
+        { out: 1, t: '18:06', txt: 'Segue o PDF. Quer agendar visita sábado?' },
+        { out: 0, t: '09:12', txt: 'Tem planta do 2 quartos?' },
+      ],
+    },
+    scraping: [
+      { emp: 'Imobiliária Horizonte Ltda', city: 'São Paulo', tel: '(11) 3456-7890', addr: 'Av. Paulista, 1000' },
+      { emp: 'Construtora Vale Verde', city: 'Campinas', tel: '(19) 3344-1122', addr: 'R. Barão, 450' },
+      { emp: 'Corretora Prime Negócios', city: 'Santos', tel: '(13) 3221-9988', addr: 'Av. Ana Costa, 88' },
+      { emp: 'Loteamentos Sul SP', city: 'Sorocaba', tel: '(15) 3012-4455', addr: 'R. XV de Novembro, 200' },
+      { emp: 'Incorporadora Atlântica', city: 'Guarujá', tel: '(13) 3355-6677', addr: 'Av. Puglisi, 12' },
+    ],
+    users: [
+      { name: 'João Silva', email: 'joao@fourimoveis.com.br', role: 'Usuário conta', sys: 0 },
+      { name: 'Maria Admin', email: 'admin@guerova.com.br', role: 'System admin', sys: 1 },
+      { name: 'Carlos Corretor', email: 'carlos@fourimoveis.com.br', role: 'Usuário conta', sys: 0 },
+    ],
+    pack: {
+      objective: 'Engajamento: Conversas iniciadas pelo WhatsApp',
+      campaign: 'Guaiãzes 2Q — Jun/2025',
+      adset: 'Guaiãzes — SP raio 15km · 25–55',
+      primary: '🏠 Apartamento 2 dorms — Guaiãzes: a partir de R$ 289.000. Condomínio com portaria 24h. WhatsApp para planta e visita.',
+      primaryB: 'Imóvel em São Paulo — Guaiãzes. Público 25–55. Toque em Fale conosco.',
+      headlines: ['Guaiãzes — SP', 'R$ 289k · Apartamento', 'Guaiãzes — agende visita'],
+      desc: ['Consulte nossos corretores.', 'Agende sua visita pelo WhatsApp.'],
+      wa: 'Olá! Vi seu interesse no anúncio do Guaiãzes. Quer planta, tabela de preços e horários para visita?',
+      images: ['Capa 4:5: fachada + faixa de preço', 'Carrossel: lazer → sala → quartos', 'Planta humanizada com mobília'],
+      video: ['Gancho 3s: "Ainda dá tempo de morar bem nesta região?"', 'Meio 12s: tour lazer e localização', 'CTA 5s: Chama no WhatsApp — simulação hoje'],
+      checklist: [
+        'Campanha: Engajamento → conversas WhatsApp; orçamento no conjunto',
+        'Conjunto: destino WhatsApp Business; geo SP + 15km',
+        'Anúncio: Feed + Stories; CTA Fale conosco',
+      ],
+    },
+    tips: [
+      'Saldo confortável — teste +R$ 20/dia no conjunto com mais mensagens.',
+      'Vídeo tour: CTR 40% maior que imagem estática.',
+      'Remarketing: exclua quem enviou mensagem nos últimos 7 dias.',
+    ],
+    gerandoSteps: [
+      'Validando briefing Meta Ads + WhatsApp',
+      'Montando prompt estruturado (Gemini)',
+      'Gerando textos, headlines e follow-up',
+      'Sugerindo criativos e roteiro de vídeo',
+      'Normalizando pacote para publicação',
+    ],
+  };
+
+  let page = 'inicio';
+  let campTab = 'campaigns';
+  let rankTab = 'top20';
+  let leadTab = 'geral';
+  let selectedLead = 'l1';
+  let waConnected = D.wa.connected;
+
+  function brl(n, compact) {
+    if (n == null) return '—';
+    if (compact && n >= 1e6) return 'R$ ' + (n / 1e6).toFixed(1).replace('.', ',') + 'M';
+    if (compact && n >= 1e3) return 'R$ ' + (n / 1e3).toFixed(1).replace('.', ',') + 'k';
+    return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: n % 1 ? 2 : 0 });
+  }
+
+  function fmt(n) { return Number(n).toLocaleString('pt-BR'); }
+
+  function tag(st) {
+    if (st === 'ACTIVE' || st === 'ENABLED') return '<span class="tag tag-ok">ACTIVE</span>';
+    if (st === 'PAUSED') return '<span class="tag tag-warn">PAUSED</span>';
+    if (st === 'DRAFT') return '<span class="tag tag-muted">DRAFT</span>';
+    return '<span class="tag tag-muted">' + st + '</span>';
+  }
+
+  function donut(items) {
+    let a = 0;
+    return 'conic-gradient(' + items.map(i => {
+      const s = a; a += i.p; return i.c + ' ' + s + '% ' + a + '%';
+    }).join(', ') + ')';
+  }
+
+  function navHtml() {
+    return NAV.map(item => {
+      if (item.group) return '<div class="nav-group">' + item.group + '</div>';
+      const active = page === item.id || (page === 'lead' && item.id === 'crm');
+      return '<button type="button" class="nav-btn' + (active ? ' active' : '') + '" data-go="' + item.id + '">' +
+        '<span class="ico">' + item.icon + '</span><span class="lbl">' + item.label + '</span></button>';
+    }).join('');
+  }
+
+  const TITLES = {
+    inicio: 'Início', campanhas: 'Campanhas Meta', relatorio: 'Relatório (clientes)',
+    dashboard: 'Four Assessoria — BI Dashboard', crm: 'Leads (CRM)', lead: 'Detalhe do lead',
+    whatsapp: 'WhatsApp', scraping: 'Scraping B2B', briefing: 'Briefing Meta Ads',
+    gerando: 'Gerando campanha com IA', pacote: 'Pacote de campanha', refinamento: 'Refinamento',
+    score: 'Score — Anti Fraud', admin: 'Admin (usuários)', config: 'Configurações',
+  };
+
+  const VIEWS = {
+    inicio() {
+      return `
+        <div class="alert alert-info">Protótipo completo do <strong>Guerova LeadMaster</strong> para apresentação — todos os módulos, sem tela de login.</div>
+        <div class="grid g2" style="align-items:start">
+          <div>
+            <h2 class="hero">Crie a sua campanha com <em>I.A.</em> para vender o seu imóvel</h2>
+            <p class="muted" style="margin-bottom:1rem">Briefing Meta Ads → Gemini gera textos, criativos e follow-up WhatsApp → publicação PAUSED via API.</p>
+            <button type="button" class="btn btn-primary" data-go="briefing">Preencher briefing e gerar campanha →</button>
+          </div>
+          <div class="card" style="background:linear-gradient(135deg,#6366f1,#2563eb);color:#fff;border:none;text-align:center;padding:2rem">
+            <div style="font-size:2.5rem;margin-bottom:.5rem">🏠</div>
+            <strong>Meta Ads + WhatsApp Business</strong>
+            <p style="font-size:.85rem;opacity:.9;margin-top:.35rem">Campanhas inteligentes para imóveis</p>
+          </div>
+        </div>
+        <h3 style="font-size:.95rem;margin:1.25rem 0 .65rem">Imóveis ativos <span class="tag tag-blue">${D.listings.length}</span></h3>
+        <div class="listing-row">
+          ${D.listings.map(l => `
+            <div class="card listing" style="--accent:${l.accent}">
+              <strong>${l.title}</strong>
+              <div class="muted" style="font-size:.78rem;margin:.2rem 0">${l.loc} · ${l.price}${l.beds ? ' · ' + l.beds + ' qts' : ''}</div>
+              <div style="font-size:.76rem;margin-top:.45rem"><strong>Anúncio:</strong> ${l.headline}</div>
+              <p class="muted" style="font-size:.74rem;margin:.35rem 0">${l.text}</p>
+              <span class="tag tag-ok">ACTIVE</span> <span class="tag tag-muted">${l.cta}</span>
+            </div>
+          `).join('')}
+        </div>`;
+    },
+
+    campanhas() {
+      const tabs = [['campaigns', 'Campanhas'], ['adsets', 'Conjuntos'], ['ads', 'Anúncios'], ['internal', 'Guerova (salvas)']];
+      return `
+        <div class="tabs">${tabs.map(([k, l]) => `<button type="button" class="tab${campTab === k ? ' on' : ''}" data-camp-tab="${k}">${l}</button>`).join('')}</div>
+        <div class="card">
+          <div class="card-h">Meta Ads · act_1857209318456078 · Four Assessoria</div>
+          <p class="card-sub">Token configurado · últimos 30 dias · usuário Graph API conectado</p>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Nome</th><th>Nível</th><th>Status</th><th>Gasto</th><th>Resultados</th><th>Orç/dia</th></tr></thead>
+            <tbody>${D.campaigns.filter(c => campTab === 'campaigns' ? c.level === 'Campanha' : campTab === 'adsets' ? c.level === 'Conjunto' : campTab === 'ads' ? c.level === 'Anúncio' : false).map(c => `
+              <tr><td><strong>${c.name}</strong></td><td>${c.level}</td><td>${tag(c.status)}</td>
+              <td>${brl(c.spend)}</td><td>${c.results}</td><td>${c.budget ? brl(c.budget) : '—'}</td></tr>
+            `).join('') || (campTab === 'internal' ? '' : D.campaigns.map(c => `
+              <tr><td><strong>${c.name}</strong></td><td>${c.level}</td><td>${tag(c.status)}</td>
+              <td>${brl(c.spend)}</td><td>${c.results}</td><td>${c.budget ? brl(c.budget) : '—'}</td></tr>`).join(''))}
+            ${campTab === 'internal' ? D.internalCampaigns.map(c => `
+              <tr><td><strong>${c.name}</strong></td><td>Guerova</td><td>${tag(c.status)}</td>
+              <td>—</td><td>${c.created}</td><td><span class="tag tag-muted">${c.model}</span></td></tr>`).join('') : ''}
+            </tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="card-h">Dicas de otimização (IA)</div>
+          <ul class="muted" style="padding-left:1.2rem;font-size:.84rem">${D.tips.map(t => '<li style="margin-bottom:.3rem">' + t + '</li>').join('')}</ul>
+        </div>`;
+    },
+
+    relatorio() {
+      const t = D.relatorio.totals;
+      return `
+        <div class="filters">
+          <div class="field"><label>Período</label><select><option>Últimos 30 dias</option><option>Últimos 7 dias</option><option>Este mês</option></select></div>
+          <button type="button" class="btn btn-ghost btn-sm">Atualizar relatório</button>
+        </div>
+        <div class="grid g4" style="margin-bottom:1rem">
+          <div class="card kpi"><div class="lbl">Impressões</div><div class="val">${fmt(t.impressions)}</div></div>
+          <div class="card kpi"><div class="lbl">Cliques</div><div class="val">${fmt(t.clicks)}</div><div class="delta">CTR ${t.ctr}%</div></div>
+          <div class="card kpi"><div class="lbl">Investido</div><div class="val">${brl(t.spend)}</div><div class="delta neu">CPM ${brl(t.cpm)}</div></div>
+          <div class="card kpi"><div class="lbl">Conversas WA</div><div class="val">${t.conversations}</div><div class="delta">${brl(t.spend / t.conversations)}/conv.</div></div>
+        </div>
+        <div class="card">
+          <div class="card-h">Campanhas por conta de anúncios</div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Campanha</th><th>Status</th><th>Impressões</th><th>Cliques</th><th>Gasto</th><th>Conversas</th><th>CPC</th></tr></thead>
+            <tbody>${D.relatorio.rows.map(r => `
+              <tr><td><strong>${r.name}</strong></td><td>${tag(r.st)}</td><td>${fmt(r.imp)}</td><td>${r.clk}</td>
+              <td>${brl(r.spend)}</td><td>${r.conv}</td><td>${brl(r.spend / r.clk)}</td></tr>`).join('')}
+            </tbody>
+          </table></div>
+        </div>`;
+    },
+
+    dashboard() {
+      const maxF = D.bi.funnel[0].n;
+      const maxM = Math.max(...D.bi.monthly.map(x => x.v));
+      const mapColors = { high: '#1d4ed8', medium: '#6366f1', low: '#93c5fd' };
+      return `
+        <div class="filters">
+          <div class="field"><label>Período</label><select><option>Jan–Jun 2025</option><option>Jan–Dez 2024</option></select></div>
+          <div class="field"><label>Estado</label><select><option>Todos</option><option>SP</option><option>RJ</option></select></div>
+          <div class="field"><label>Nível</label><select><option>Todos</option><option>A</option><option>B</option></select></div>
+        </div>
+        <div class="grid g5" style="margin-bottom:1rem">
+          ${D.bi.kpis.map(k => `<div class="card kpi"><div class="lbl">${k.l}</div><div class="val">${k.v}</div>
+            <div class="delta${k.neu ? ' neu' : ''}">${k.d}</div></div>`).join('')}
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem">
+            <div><strong>Meta de Vendas — ${D.bi.goal.y}</strong><br><span class="muted" style="font-size:.8rem">Realizado ${brl(D.bi.goal.ach, true)} · Meta ${brl(D.bi.goal.tgt, true)}</span></div>
+            <div style="text-align:right"><div style="font-size:1.75rem;font-weight:700;color:var(--primary)">${D.bi.goal.pct}%</div>
+            <span class="delta">↑ ${D.bi.goal.delta}% vs mês anterior</span></div>
+          </div>
+          <div class="progress"><div style="width:${D.bi.goal.pct}%"></div></div>
+        </div>
+        <div class="grid g2">
+          <div class="card">
+            <div class="card-h">Funil de conversão <span class="muted" style="font-weight:400">· total ${D.bi.funnelTotal}%</span></div>
+            ${D.bi.funnel.map(f => `
+              <div class="funnel-bar" style="width:${Math.max(22, f.n / maxF * 100)}%">
+                <strong>${f.s}</strong> — ${fmt(f.n)} · ${f.sc}% etapa · ${f.tc}% acum.
+              </div>`).join('')}
+          </div>
+          <div class="card">
+            <div class="card-h">Vendas × Tráfego (Jan–Jun)</div>
+            <div class="chart-bars">
+              ${D.bi.monthly.map(m => `<div class="chart-col">
+                <div class="bar" style="height:${m.v / maxM * 130}px" title="Vendas ${m.v}k"></div>
+                <div class="bar alt" style="height:${m.t / 17 * 60}px" title="Tráfego ${m.t}k"></div>
+                <span>${m.m}</span></div>`).join('')}
+            </div>
+            <div class="muted" style="font-size:.72rem;margin-top:.5rem">■ Vendas (R$ mil) ■ Tráfego (R$ mil)</div>
+          </div>
+        </div>
+        <div class="grid g3" style="margin-top:1rem">
+          <div class="card">
+            <div class="card-h">Mix de imóveis</div>
+            <div class="donut-row"><div class="donut" style="background:${donut(D.bi.types)}"></div>
+            <ul class="donut-leg">${D.bi.types.map(t => `<li><span><span class="dot" style="background:${t.c}"></span>${t.n}</span><strong>${t.p}%</strong></li>`).join('')}</ul></div>
+          </div>
+          <div class="card">
+            <div class="card-h">Origem dos leads</div>
+            <div class="donut-row"><div class="donut" style="background:${donut(D.bi.sources)}"></div>
+            <ul class="donut-leg">${D.bi.sources.map(s => `<li><span><span class="dot" style="background:${s.c}"></span>${s.n}</span><strong>${s.p}%</strong></li>`).join('')}</ul></div>
+          </div>
+          <div class="card">
+            <div class="card-h">Mapa de vendas (BR)</div>
+            <div class="map-br">${D.bi.states.map(s => {
+              const tier = s.cnt > 15 ? 'high' : s.cnt >= 8 ? 'medium' : 'low';
+              return `<div class="map-uf" style="background:${mapColors[tier]}">${s.uf}<br><small>${s.cnt}</small></div>`;
+            }).join('')}</div>
+            <p class="muted" style="font-size:.72rem;margin-top:.5rem">Contagem de vendas por UF (mock)</p>
+          </div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+          <div class="tabs">${[['top20', 'Top 20'], ['all', 'Todos'], ['semVenda', 'Sem venda']].map(([k, l]) =>
+            `<button type="button" class="tab${rankTab === k ? ' on' : ''}" data-rank-tab="${k}">${l}</button>`).join('')}</div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>#</th><th>Mentorado</th><th>Nív.</th><th>UF</th><th>Comprou</th><th>Vendeu</th><th>Lucro</th><th>Tráfego</th><th>ROI</th></tr></thead>
+            <tbody>${D.bi.mentorados.map(m => `
+              <tr><td>${m.r}</td><td><strong>${m.n}</strong></td><td><span class="tag tag-blue">${m.lv}</span></td><td>${m.uf}</td>
+              <td>${brl(m.buy)}</td><td>${brl(m.sell)}</td><td>${brl(m.profit)}</td><td>${brl(m.tr)}</td>
+              <td style="color:var(--success);font-weight:700">${m.roi}x</td></tr>`).join('')}
+            </tbody>
+          </table></div>
+        </div>
+        <div class="grid g2" style="margin-top:1rem">
+          <div class="card">
+            <div class="card-h">Top tráfego × receita</div>
+            <table><thead><tr><th>Mentorado</th><th>Investido</th><th>Receita</th><th>ROI</th></tr></thead>
+            <tbody>${D.bi.traffic.map(t => `<tr><td>${t.n}</td><td>${brl(t.sp)}</td><td>${t.rev != null ? brl(t.rev) : '—'}</td>
+              <td>${t.roi != null ? '<span style="color:var(--success);font-weight:700">' + t.roi + 'x</span>' : '—'}</td></tr>`).join('')}
+            </tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-h">Em prospectação</div>
+            <table><thead><tr><th>Nome</th><th>UF</th><th>Tráfego</th><th>Leads</th></tr></thead>
+            <tbody>${D.bi.prospecting.map(p => `<tr><td>${p.n}</td><td>${p.uf}</td><td>${brl(p.tr)}</td><td>${p.leads}</td></tr>`).join('')}
+            </tbody></table>
+          </div>
+        </div>`;
+    },
+
+    crm() {
+      const sum = 18500 + 12200;
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+          <span class="muted">Pipeline Kanban · arraste cards no app real</span>
+          <span class="tag tag-ok">Fechado: ${brl(sum)} · ${D.kanban.Fechado.length} negócios</span>
+        </div>
+        <div class="kanban">${Object.entries(D.kanban).map(([col, leads]) => `
+          <div class="k-col"><h4>${col} (${leads.length})</h4>
+            ${leads.map(l => `<div class="k-card" data-lead="${l.id}">
+              <strong>${l.name}</strong><div class="muted">${l.phone}</div>
+              <div style="margin-top:.2rem;font-size:.72rem">${l.ctx}</div>
+              ${l.val ? '<span class="tag tag-ok" style="margin-top:.3rem">' + l.val + '</span>' : ''}
+            </div>`).join('')}
+          </div>`).join('')}
+        </div>`;
+    },
+
+    lead() {
+      const ld = D.leadDetail[selectedLead] || D.leadDetail.l1;
+      const tabs = [['geral', 'Geral'], ['conversa', 'Conversas'], ['whatsapp', 'WhatsApp'], ['imovel', 'Imóvel']];
+      let body = '';
+      if (leadTab === 'geral') {
+        body = `<div class="grid g2"><div class="field"><label>Nome</label><input value="${ld.name}" readonly></div>
+          <div class="field"><label>Telefone</label><input value="${ld.phone}" readonly></div>
+          <div class="field"><label>E-mail</label><input value="${ld.email}" readonly></div>
+          <div class="field"><label>Estágio</label><input value="${ld.stage}" readonly></div></div>`;
+      } else if (leadTab === 'conversa' || leadTab === 'whatsapp') {
+        body = ld.msgs.map(m => `<div class="card" style="padding:.65rem;margin-bottom:.45rem">
+          <span class="tag tag-muted">${m.via}</span> <strong>${m.who}</strong> <span class="muted" style="font-size:.72rem">${m.t}</span>
+          <p style="margin-top:.35rem;font-size:.84rem">${m.txt}</p></div>`).join('');
+      } else {
+        body = `<div class="field"><label>Imóvel de interesse</label><select><option>${ld.listing}</option>
+          ${D.listings.map(l => '<option>' + l.title + '</option>').join('')}</select></div>`;
+      }
+      return `
+        <div class="breadcrumb"><button type="button" data-go="crm">← CRM</button> / ${ld.name}</div>
+        <div class="lead-tabs">${tabs.map(([k, l]) => `<button type="button" class="lead-tab${leadTab === k ? ' on' : ''}" data-lead-tab="${k}">${l}</button>`).join('')}</div>
+        <div class="card">${body}</div>
+        <button type="button" class="btn btn-primary" data-go="whatsapp">Abrir no WhatsApp</button>`;
+    },
+
+    whatsapp() {
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          ${waConnected ? '<span class="tag tag-ok">Conectado</span> <span class="muted">Sessão QR ativa — conversas Guerova</span>'
+            : '<span class="tag tag-warn">Desconectado</span>'}
+          <button type="button" class="btn btn-ghost btn-sm" id="wa-toggle">${waConnected ? 'Desconectar' : 'Mostrar QR Code'}</button>
+        </div>
+        ${!waConnected ? '<div class="alert alert-warn">Escaneie o QR no telemóvel: WhatsApp → Aparelhos conectados → Conectar aparelho.</div>' : ''}
+        <div class="wa">
+          <div class="wa-list">${D.wa.chats.map((c, i) => `
+            <div class="wa-item${i === 0 ? ' on' : ''}"><span class="t">${c.time}</span><strong>${c.name}</strong><br>
+            <span class="muted" style="font-size:.72rem">${c.last}</span></div>`).join('')}</div>
+          <div>
+            <div class="wa-head"><strong>João Silva</strong> · (11) 98765-4321</div>
+            <div class="wa-msgs">${D.wa.thread.map(m => `<div class="bubble ${m.out ? 'out' : 'in'}">${m.txt}
+              <div style="font-size:.62rem;color:var(--muted);text-align:right;margin-top:.15rem">${m.t}</div></div>`).join('')}</div>
+            <div class="wa-input"><input placeholder="Digite uma mensagem…" ${waConnected ? '' : 'disabled'}>
+              <button type="button" class="btn btn-primary btn-sm" ${waConnected ? '' : 'disabled'}>Enviar</button></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+          <div class="card-h">Nova conversa (Guerova)</div>
+          <div class="grid g2"><div class="field"><label>Número (DDI+DDD)</label><input placeholder="5511999999999"></div>
+          <div class="field"><label>Nome (opcional)</label><input placeholder="Nome do contacto"></div></div>
+          <button type="button" class="btn btn-ghost btn-sm">Iniciar conversa</button>
+        </div>`;
+    },
+
+    briefing() {
+      return `
+        <p class="muted" style="margin-bottom:1rem">Modelo campanha → conjunto → anúncio. Campos 19–21 gerados pela IA no passo seguinte.</p>
+        <div class="card"><div class="card-h">Campanha</div>
+          <div class="grid g2">
+            <div class="field"><label>Objetivo</label><select><option>Engajamento: Conversas iniciadas pelo WhatsApp</option></select></div>
+            <div class="field"><label>Nome da campanha</label><input value="Guaiãzes 2Q — Jun/2025"></div>
+            <div class="field"><label>Estratégia de orçamento</label><select><option>Orçamento do conjunto de anúncios</option></select></div>
+          </div>
+        </div>
+        <div class="card"><div class="card-h">Conjunto de anúncios</div>
+          <div class="grid g2">
+            <div class="field"><label>Nome do conjunto</label><input value="Guaiãzes — SP raio 15km"></div>
+            <div class="field"><label>Destino</label><select><option>Destino de mensagens — WhatsApp Business</option></select></div>
+            <div class="field"><label>Público-alvo</label><input value="Homens e mulheres, 25 a 55 anos"></div>
+            <div class="field"><label>Geo</label><input value="São Paulo, SP — raio 15 km"></div>
+            <div class="field"><label>Orçamento diário</label><input value="R$ 50,00 por dia"></div>
+            <div class="field"><label>Posicionamentos</label><input value="Feed e Stories Instagram + Facebook" readonly></div>
+          </div>
+        </div>
+        <div class="card"><div class="card-h">Anúncio / Imóvel</div>
+          <div class="grid g2">
+            <div class="field"><label>Nome do imóvel</label><input value="Apartamento 2 dorms — Guaiãzes"></div>
+            <div class="field"><label>Faixa de preço</label><input value="R$ 289.000"></div>
+            <div class="field" style="grid-column:1/-1"><label>Destaques</label><textarea>Condomínio com portaria 24h, garagem, lazer completo</textarea></div>
+            <div class="field"><label>CTA</label><input value="Fale conosco" readonly></div>
+            <div class="field"><label>Formato</label><select><option>Imagem ou vídeo</option><option>Carrossel</option></select></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button type="button" class="btn btn-ghost" data-go="inicio">Voltar</button>
+          <button type="button" class="btn btn-primary" data-go="gerando">Gerar textos e pacote com IA →</button>
+        </div>`;
+    },
+
+    gerando() {
+      return `
+        <div class="loader">
+          <div class="spinner"></div>
+          <h2 style="font-size:1.1rem;margin-bottom:.5rem">Gerando pacote de campanha…</h2>
+          <p class="muted" style="margin-bottom:1.25rem">Gemini 2.5 Flash · fallback mock se API indisponível</p>
+          <ul style="list-style:none;max-width:360px;margin:0 auto;text-align:left;font-size:.85rem">
+            ${D.gerandoSteps.map((s, i) => `<li style="padding:.4rem 0;border-bottom:1px solid var(--border);color:${i < 4 ? 'var(--success)' : 'var(--muted)'}">
+              ${i < 4 ? '✓' : '◌'} ${s}</li>`).join('')}
+          </ul>
+          <button type="button" class="btn btn-primary" style="margin-top:1.5rem" data-go="pacote">Ver pacote gerado →</button>
+        </div>`;
+    },
+
+    pacote() {
+      const p = D.pack;
+      return `
+        <div class="breadcrumb"><button type="button" data-go="briefing">Briefing</button> → Pacote IA</div>
+        <div class="alert alert-info">Pacote gerado (mock) · modelo <code>gemini-2.5-flash</code></div>
+        <div class="grid g2">
+          <div class="card"><div class="card-h">Textos do anúncio</div>
+            <p style="font-size:.84rem;margin-bottom:.75rem"><strong>Primary A:</strong><br>${p.primary}</p>
+            <p style="font-size:.84rem;margin-bottom:.75rem"><strong>Primary B:</strong><br>${p.primaryB}</p>
+            <p style="font-size:.82rem"><strong>Headlines:</strong> ${p.headlines.join(' · ')}</p>
+            <p style="font-size:.82rem;margin-top:.5rem"><strong>Descrições:</strong> ${p.desc.join(' · ')}</p>
+          </div>
+          <div class="card"><div class="card-h">WhatsApp follow-up</div>
+            <p style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem;font-size:.84rem">${p.wa}</p>
+            <div class="card-h" style="margin-top:1rem">Roteiro de vídeo</div>
+            <ol style="font-size:.8rem;padding-left:1.2rem;color:var(--muted)">${p.video.map(v => '<li style="margin-bottom:.25rem">' + v + '</li>').join('')}</ol>
+          </div>
+        </div>
+        <div class="card"><div class="card-h">Ideias de criativo</div>
+          <ul style="font-size:.84rem;padding-left:1.2rem">${p.images.map(i => '<li>' + i + '</li>').join('')}</ul>
+        </div>
+        <div class="card"><div class="card-h">Checklist Meta Ads</div>
+          <ul style="font-size:.82rem;padding-left:1.2rem;color:var(--muted)">${p.checklist.map(c => '<li style="margin-bottom:.25rem">' + c + '</li>').join('')}</ul>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button type="button" class="btn btn-primary">Publicar no Meta (PAUSED)</button>
+          <button type="button" class="btn btn-ghost">Salvar no Guerova</button>
+          <button type="button" class="btn btn-ghost" data-go="refinamento">Refinar textos →</button>
+          <button type="button" class="btn btn-ghost" data-go="campanhas">Ver campanhas</button>
+        </div>`;
+    },
+
+    refinamento() {
+      return `
+        <div class="breadcrumb"><button type="button" data-go="pacote">← Pacote</button></div>
+        <p class="muted" style="margin-bottom:1rem">Ajuste manual dos textos antes de publicar ou salvar.</p>
+        <div class="card">
+          <div class="field"><label>Texto principal (variante A)</label>
+            <textarea>${D.pack.primary}</textarea></div>
+          <div class="field"><label>Título / Headline</label><input value="${D.pack.headlines[0]}"></div>
+          <div class="field"><label>Follow-up WhatsApp</label><textarea>${D.pack.wa}</textarea></div>
+          <button type="button" class="btn btn-primary">Aplicar alterações</button>
+        </div>`;
+    },
+
+    scraping() {
+      return `
+        <div class="card">
+          <div class="card-h">Extrair leads B2B</div>
+          <div class="grid g3">
+            <div class="field"><label>Fonte</label><select><option>OpenStreetMap</option><option>Google Places</option></select></div>
+            <div class="field"><label>Cidade / Estado</label><input value="São Paulo, SP"></div>
+            <div class="field"><label>Quantidade</label><input type="number" value="10"></div>
+            <div class="field"><label>Setor</label><select><option>Imóveis</option><option>Construtoras</option></select></div>
+          </div>
+          <button type="button" class="btn btn-primary">Executar scraping</button>
+        </div>
+        <div class="card">
+          <div class="card-h">Resultados · ${D.scraping.length} registos (mock)</div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Empresa</th><th>Cidade</th><th>Telefone</th><th>Endereço</th></tr></thead>
+            <tbody>${D.scraping.map(r => `<tr><td><strong>${r.emp}</strong></td><td>${r.city}</td><td>${r.tel}</td><td>${r.addr}</td></tr>`).join('')}
+            </tbody>
+          </table></div>
+          <button type="button" class="btn btn-ghost btn-sm" style="margin-top:.75rem">Exportar CSV</button>
+        </div>
+        <p class="muted" style="font-size:.78rem">Produção: jobs assíncronos, LGPD e opt-in antes de campanhas.</p>`;
+    },
+
+    score() {
+      return `
+        <div class="alert alert-warn"><strong>Modo mock.</strong> CPF exemplo: <code>39053344705</code> (bom), <code>11144477735</code> (médio), <code>52998224725</code> (fraco).</div>
+        <div class="grid g2">
+          <div class="card">
+            <div class="card-h">Consulta Serasa Anti Fraud Scores</div>
+            <div class="field"><label>CPF (11 dígitos)</label><input value="39053344705"></div>
+            <button type="button" class="btn btn-primary">Consultar score</button>
+          </div>
+          <div class="card gauge-wrap">
+            <div class="card-h">Resultado simulado</div>
+            <div class="gauge"><div class="gauge-in">720</div></div>
+            <p style="margin-top:.75rem"><strong>Score de crédito</strong> — Baixo risco</p>
+            <p class="muted" style="font-size:.78rem">CPF 390.533.447-05 · enrichments mock</p>
+          </div>
+        </div>`;
+    },
+
+    admin() {
+      return `
+        <div class="grid g2" style="align-items:start">
+          <div class="card">
+            <div class="card-h">Criar usuário</div>
+            <div class="field"><label>Nome</label><input placeholder="Nome completo"></div>
+            <div class="field"><label>E-mail</label><input type="email" placeholder="email@empresa.com"></div>
+            <div class="field"><label>Senha</label><input type="password"></div>
+            <div class="field"><label><input type="checkbox"> System admin</label></div>
+            <div class="field"><label>Conta</label><select><option>Four Imóveis</option></select></div>
+            <button type="button" class="btn btn-primary">Criar usuário</button>
+          </div>
+          <div class="card">
+            <div class="card-h">Usuários cadastrados</div>
+            <table><thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th></tr></thead>
+            <tbody>${D.users.map(u => `<tr><td><strong>${u.name}</strong>${u.sys ? ' <span class="tag tag-warn">admin</span>' : ''}</td>
+              <td>${u.email}</td><td>${u.role}</td></tr>`).join('')}
+            </tbody></table>
+          </div>
+        </div>`;
+    },
+
+    config() {
+      return `
+        <div class="card">
+          <div class="card-h">Meta Ads (Marketing API)</div>
+          <div class="grid g2">
+            <div class="field"><label>Graph version</label><input value="v21.0" readonly></div>
+            <div class="field"><label>Conta de anúncios</label><input value="act_1857209318456078" readonly></div>
+            <div class="field"><label>Page ID</label><input value="1094861130375743" readonly></div>
+            <div class="field"><label>Token</label><input type="password" value="EAA••••••••••••" readonly></div>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-top:.5rem">
+            <button type="button" class="btn btn-primary">Salvar conexão</button>
+            <button type="button" class="btn btn-ghost">Testar publicação PAUSED</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h">WhatsApp</div>
+          <div class="grid g2">
+            <div><span class="tag tag-ok">Bridge Web</span> <span class="muted" style="font-size:.8rem">http://127.0.0.1:3100</span></div>
+            <div><span class="tag tag-ok">Cloud API</span> <span class="muted" style="font-size:.8rem">Token + Phone ID configurados</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h">Gemini (IA campanhas)</div>
+          <div class="field"><label>Modelo</label><input value="gemini-2.5-flash" readonly></div>
+          <span class="tag tag-ok">API Key configurada</span> <span class="tag tag-muted">Fallback mock: on</span>
+        </div>
+        <div class="card">
+          <div class="card-h">Google Ads (opcional)</div>
+          <p class="muted" style="font-size:.84rem">OAuth desabilitado nesta demo. Flag <code>VITE_FEATURE_GOOGLE=true</code> reativa na app React.</p>
+        </div>
+        <div class="card">
+          <div class="card-h">Serasa Score</div>
+          <p class="muted" style="font-size:.84rem">Anti Fraud Scores · mock em desenvolvimento · <code>SERASA_SCORE_USE_MOCK=true</code></p>
+        </div>`;
+    },
+  };
+
+  function render() {
+    document.getElementById('sidebar-nav').innerHTML = navHtml();
+    document.getElementById('view-title').textContent = TITLES[page] || page;
+    const fn = VIEWS[page];
+    document.getElementById('viewport').innerHTML = fn ? fn() : '<p>Página não encontrada.</p>';
+    bindEvents();
+  }
+
+  function go(id) {
+    page = id;
+    render();
+    document.querySelector('.viewport').scrollTop = 0;
+  }
+
+  function bindEvents() {
+    document.querySelectorAll('[data-go]').forEach(el => {
+      el.addEventListener('click', () => go(el.getAttribute('data-go')));
+    });
+    document.querySelectorAll('[data-camp-tab]').forEach(el => {
+      el.addEventListener('click', () => { campTab = el.getAttribute('data-camp-tab'); render(); });
+    });
+    document.querySelectorAll('[data-rank-tab]').forEach(el => {
+      el.addEventListener('click', () => { rankTab = el.getAttribute('data-rank-tab'); render(); });
+    });
+    document.querySelectorAll('[data-lead-tab]').forEach(el => {
+      el.addEventListener('click', () => { leadTab = el.getAttribute('data-lead-tab'); render(); });
+    });
+    document.querySelectorAll('[data-lead]').forEach(el => {
+      el.addEventListener('click', () => { selectedLead = el.getAttribute('data-lead'); leadTab = 'geral'; page = 'lead'; render(); });
+    });
+    const wt = document.getElementById('wa-toggle');
+    if (wt) wt.addEventListener('click', () => { waConnected = !waConnected; render(); });
+  }
+
+  render();
+})();
+  </script>
+</body>
+</html>

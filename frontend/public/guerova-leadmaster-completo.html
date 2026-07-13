@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guerova LeadMaster — Demo completa (mock)</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --sidebar: #1e293b;
+      --sidebar-hover: #334155;
+      --sidebar-active: #3b82f6;
+      --bg: #f1f5f9;
+      --card: #fff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+    .app { display: flex; height: 100vh; }
+
+    .sidebar {
+      width: 240px; background: var(--sidebar); color: #e2e8f0;
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .sidebar-brand { padding: 1.25rem 1rem; border-bottom: 1px solid #334155; }
+    .sidebar-brand strong { display: block; color: #fff; font-size: 1rem; }
+    .sidebar-brand span { font-size: 0.72rem; color: #94a3b8; }
+    .nav { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
+    .nav-item {
+      display: flex; align-items: center; gap: 0.65rem;
+      padding: 0.65rem 1rem; font-size: 0.85rem; color: #cbd5e1;
+      cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+      transition: background 0.15s;
+    }
+    .nav-item:hover { background: var(--sidebar-hover); color: #fff; }
+    .nav-item.active { background: var(--sidebar-active); color: #fff; font-weight: 600; }
+    .nav-icon { width: 18px; text-align: center; opacity: 0.85; }
+    .sidebar-foot { padding: 0.75rem 1rem; font-size: 0.7rem; color: #64748b; border-top: 1px solid #334155; }
+
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 0.65rem 1.25rem; display: flex; justify-content: space-between; align-items: center;
+    }
+    .topbar h1 { font-size: 0.95rem; font-weight: 600; }
+    .topbar-meta { display: flex; gap: 1rem; align-items: center; font-size: 0.8rem; color: var(--muted); }
+    .badge-demo { background: #fef3c7; color: #92400e; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700; }
+
+    .content { flex: 1; overflow-y: auto; padding: 1.25rem; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+    .card-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 0.75rem; }
+    .grid { display: grid; gap: 1rem; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-5 { grid-template-columns: repeat(5, 1fr); }
+    @media (max-width: 1100px) { .grid-4, .grid-5 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .sidebar { width: 56px; } .sidebar-brand span, .nav-item span { display: none; } .grid-2 { grid-template-columns: 1fr; } }
+
+    .kpi { padding: 0.9rem; }
+    .kpi-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+    .kpi-value { font-size: 1.4rem; font-weight: 700; margin: 0.25rem 0; }
+    .kpi-delta { font-size: 0.78rem; font-weight: 600; color: var(--success); }
+    .kpi-delta.down { color: var(--danger); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.45rem 1rem; border-radius: 999px; border: none; font-size: 0.82rem;
+      font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--text); }
+    .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.75rem; border-radius: 6px; }
+
+    .tag { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700; }
+    .tag-success { background: #dcfce7; color: #166534; }
+    .tag-warning { background: #fef3c7; color: #92400e; }
+    .tag-muted { background: #f1f5f9; color: var(--muted); }
+    .tag-primary { background: #dbeafe; color: var(--primary-dark); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); padding: 0.5rem; border-bottom: 2px solid var(--border); }
+    td { padding: 0.55rem 0.5rem; border-bottom: 1px solid #f1f5f9; }
+    tr:hover td { background: #f8fafc; }
+
+    .hero-title { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.75rem; }
+    .hero-title em { font-style: normal; color: var(--primary); }
+    .text-muted { color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+
+    .listing-scroll { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 0.5rem; }
+    .listing-card { min-width: 280px; border-top: 4px solid var(--accent, var(--primary)); }
+
+    .kanban { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; }
+    .kanban-col { min-width: 220px; background: #f8fafc; border-radius: 8px; padding: 0.65rem; border: 1px solid var(--border); }
+    .kanban-col h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.5rem; }
+    .lead-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem; margin-bottom: 0.5rem; font-size: 0.8rem; cursor: pointer; }
+    .lead-card:hover { border-color: var(--primary); }
+    .lead-card strong { display: block; margin-bottom: 0.2rem; }
+
+    .wa-layout { display: grid; grid-template-columns: 280px 1fr; gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; min-height: 380px; background: #fff; }
+    .wa-list { border-right: 1px solid var(--border); overflow-y: auto; }
+    .wa-chat-item { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; font-size: 0.82rem; }
+    .wa-chat-item.active, .wa-chat-item:hover { background: #eff6ff; }
+    .wa-chat-item .time { float: right; font-size: 0.7rem; color: var(--muted); }
+    .wa-thread { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; background: #e5ddd5; }
+    .wa-bubble { max-width: 75%; padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.82rem; line-height: 1.4; }
+    .wa-bubble.out { align-self: flex-end; background: #dcf8c6; }
+    .wa-bubble.in { align-self: flex-start; background: #fff; }
+
+    .funnel-step { margin-bottom: 0.35rem; }
+    .funnel-bar { background: linear-gradient(90deg, #6366f1, #3b82f6); color: #fff; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.78rem; }
+
+    .form-group { margin-bottom: 0.85rem; }
+    .form-group label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--muted); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; font-family: inherit;
+    }
+    .form-group textarea { min-height: 80px; resize: vertical; }
+
+    .alert { padding: 0.65rem 0.85rem; border-radius: 8px; font-size: 0.82rem; margin-bottom: 1rem; }
+    .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+
+    .chart-row { display: flex; align-items: flex-end; gap: 0.5rem; height: 140px; }
+    .chart-col { flex: 1; text-align: center; font-size: 0.7rem; color: var(--muted); }
+    .chart-bar { width: 100%; max-width: 40px; margin: 0 auto 0.25rem; border-radius: 4px 4px 0 0; background: var(--primary); }
+
+    .gauge { width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(var(--success) 0% 72%, #e2e8f0 72% 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+    .gauge-inner { width: 80px; height: 80px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: var(--success); }
+
+    .tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tab { padding: 0.4rem 0.85rem; border-radius: 6px; border: 1px solid var(--border); background: #fff; font-size: 0.8rem; cursor: pointer; }
+    .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .subnav { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <strong>LeadMaster AI</strong>
+        <span>Guerova · demo mock</span>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar-foot">Dados fictícios · sem backend</div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h1 id="page-title">Início</h1>
+        <div class="topbar-meta">
+          <span class="badge-demo">DEMONSTRAÇÃO</span>
+          <span>Créditos IA: <strong>1.250</strong> / 2.000</span>
+          <span>João Silva · JS</span>
+        </div>
+      </header>
+      <div class="content" id="content"></div>
+    </div>
+  </div>
+
+  <script>
+    const NAV = [
+      { id: 'inicio', icon: '⌂', label: 'Início' },
+      { id: 'campanhas', icon: '▣', label: 'Campanhas Meta' },
+      { id: 'briefing', icon: '✎', label: 'Briefing + IA' },
+      { id: 'relatorio', icon: '▤', label: 'Relatório (clientes)' },
+      { id: 'dashboard', icon: '◔', label: 'Dashboard BI' },
+      { id: 'crm', icon: '👥', label: 'Leads (CRM)' },
+      { id: 'whatsapp', icon: '💬', label: 'WhatsApp' },
+      { id: 'scraping', icon: '↓', label: 'Scraping' },
+      { id: 'score', icon: '◎', label: 'Score' },
+      { id: 'admin', icon: '⚙', label: 'Admin (usuários)' },
+      { id: 'configuracao', icon: '⚙', label: 'Configurações' },
+    ];
+
+    const DATA = {
+      listings: [
+        { title: 'Apartamento 2 dorms — Guaiãzes', city: 'São Paulo', price: 'R$ 289.000', beds: 2, accent: '#6366f1', headline: '2 quartos com garagem — entrada facilitada', cta: 'Enviar mensagem' },
+        { title: 'Sumaré — condomínio fechado', city: 'SP', price: 'R$ 410.000', beds: 3, accent: '#0ea5e9', headline: 'Condomínio com lazer completo', cta: 'Saiba mais' },
+        { title: 'Solar da Serra — Buscando imóveis', city: 'Mogi', price: 'Sob consulta', beds: null, accent: '#22c55e', headline: 'Quer vender ou comprar na região?', cta: 'Falar com corretor' },
+      ],
+      campaigns: [
+        { name: 'Imóveis — Mogi (Meta Lead Ads)', platform: 'Meta', status: 'ACTIVE', spend: 612.4, leads: 48, cpl: 12.76 },
+        { name: 'Remarketing — Visitantes 30d', platform: 'Meta', status: 'PAUSED', spend: 112, leads: 9, cpl: 12.44 },
+        { name: 'Guaiãzes — WhatsApp Jun/25', platform: 'Meta', status: 'ACTIVE', spend: 340.5, leads: 28, cpl: 12.16 },
+      ],
+      relatorio: {
+        totals: { impressions: 48200, clicks: 1240, spend: 892.5, reach: 32100, conversations: 186 },
+        campaigns: [
+          { name: 'Guaiãzes 2Q — Engajamento WA', status: 'ACTIVE', impressions: 18200, clicks: 520, spend: 412.3, conversations: 89, cpc: 0.79 },
+          { name: 'Sumaré — Tráfego', status: 'ACTIVE', impressions: 15600, clicks: 380, spend: 298.1, conversations: 52, cpc: 0.78 },
+          { name: 'Remarketing 30d', status: 'PAUSED', impressions: 14400, clicks: 340, spend: 182.1, conversations: 45, cpc: 0.54 },
+        ],
+      },
+      bi: {
+        kpis: [
+          { label: 'Mentorados Ativos', value: '250', delta: '↑ 18 este mês' },
+          { label: 'Imóveis Vendidos', value: '87', delta: '↑ 12% MoM' },
+          { label: 'Ticket Médio', value: 'R$49.4k', delta: 'Estável', neutral: true },
+          { label: 'Gasto Tráfego', value: 'R$84.2k', delta: '↑ 5.1%' },
+          { label: 'ROI Tráfego', value: '51x', delta: '↑ Excelente' },
+        ],
+        goal: { pct: 43, achieved: 'R$ 4,3M', target: 'R$ 10M' },
+        funnel: [
+          { stage: 'Impressões', count: 185000 },
+          { stage: 'Cliques', count: 12400 },
+          { stage: 'WhatsApp', count: 4820 },
+          { stage: 'Conversas', count: 2100 },
+          { stage: 'Qualificados', count: 620 },
+          { stage: 'Propostas', count: 142 },
+          { stage: 'Vendas', count: 87 },
+        ],
+        states: [{ uf: 'RJ', v: 812 }, { uf: 'SP', v: 762 }, { uf: 'SC', v: 356 }, { uf: 'MG', v: 323 }, { uf: 'PR', v: 297 }],
+        mentorados: [
+          { rank: 1, name: 'Priscila Gomes', level: 'A', state: 'GO', profit: 67000, roi: 77.9 },
+          { rank: 2, name: 'Amanda Barbosa', level: 'A', state: 'SP', profit: 66000, roi: 71 },
+          { rank: 3, name: 'Thiago Oliveira', level: 'A', state: 'SP', profit: 66000, roi: 98.5 },
+          { rank: 4, name: 'Gabriel Gomes', level: 'A', state: 'RJ', profit: 65000, roi: 87.8 },
+          { rank: 5, name: 'Isabela Oliveira', level: 'A', state: 'RJ', profit: 64000, roi: 116.4 },
+        ],
+      },
+      kanban: {
+        Novo: [
+          { name: 'João Silva', phone: '(11) 98765-4321', ctx: 'Apartamento 2 quartos' },
+          { name: 'Maria Santos', phone: '(11) 91234-5678', ctx: 'Casa com quintal' },
+        ],
+        Contato: [
+          { name: 'Pedro Oliveira', phone: '(11) 99888-7766', ctx: 'Financiamento Caixa' },
+          { name: 'Ana Costa', phone: '(11) 97777-6655', ctx: 'Investimento locação' },
+        ],
+        Qualificado: [
+          { name: 'Carlos Lima', phone: '(11) 96655-4433', ctx: 'Visita sábado 10h' },
+          { name: 'Fernanda Souza', phone: '(11) 95544-3322', ctx: 'Permuta avaliada' },
+        ],
+        Fechado: [
+          { name: 'Ricardo Almeida', phone: '(11) 94433-2211', ctx: 'Minuta assinada', value: 'R$ 18.500' },
+          { name: 'Juliana Mendes', phone: '(11) 93322-1100', ctx: 'Entrada + FGTS', value: 'R$ 12.200' },
+        ],
+      },
+      whatsapp: {
+        chats: [
+          { name: 'João Silva', phone: '(11) 98765-4321', last: 'Tem planta do 2 quartos?', time: '09:12' },
+          { name: 'Maria Santos', phone: '(11) 91234-5678', last: 'Qual o valor do condomínio?', time: 'Ontem' },
+          { name: 'Pedro Oliveira', phone: '(11) 99888-7766', last: 'Consigo visitar amanhã?', time: 'Seg' },
+          { name: 'Ana Costa', phone: '(11) 97777-6655', last: 'Obrigada pelos links!', time: 'Dom' },
+        ],
+        messages: [
+          { from: 'out', text: 'Olá João! Vi seu interesse no anúncio do Guaiãzes. Posso te mandar a planta?', time: '18:02' },
+          { from: 'in', text: 'Oi, pode sim.', time: '18:05' },
+          { from: 'out', text: 'Segue o PDF. Quer agendar visita sábado?', time: '18:06' },
+          { from: 'in', text: 'Tem planta do 2 quartos?', time: '09:12' },
+        ],
+      },
+      scraping: [
+        { nome: 'Imobiliária Horizonte Ltda', cidade: 'São Paulo', setor: 'Imóveis', tel: '(11) 3456-7890' },
+        { nome: 'Construtora Vale Verde', cidade: 'Campinas', setor: 'Imóveis', tel: '(19) 3344-1122' },
+        { nome: 'Corretora Prime Negócios', cidade: 'Santos', setor: 'Imóveis', tel: '(13) 3221-9988' },
+        { nome: 'Loteamentos Sul SP', cidade: 'Sorocaba', setor: 'Imóveis', tel: '(15) 3012-4455' },
+      ],
+      users: [
+        { name: 'João Silva', email: 'joao@fourimoveis.com.br', role: 'Admin conta', admin: false },
+        { name: 'Maria Admin', email: 'admin@guerova.com', role: 'System admin', admin: true },
+        { name: 'Carlos Corretor', email: 'carlos@fourimoveis.com.br', role: 'Usuário', admin: false },
+      ],
+      pack: {
+        objective: 'Engajamento: Conversas iniciadas pelo WhatsApp',
+        primary: '🏠 Apartamento 2 dorms — Guaiãzes: Imóveis a partir de R$ 289.000. Condomínio com portaria 24h. WhatsApp para planta e visita.',
+        headlines: ['Guaiãzes — SP', 'R$ 289k · Apartamento', 'Guaiãzes — agende visita'],
+        whatsapp: 'Olá! Vi seu interesse no anúncio. Quer planta, tabela e horários para visita?',
+        video: ['Gancho 3s: "Ainda dá tempo de morar bem nesta região?"', 'Meio 12s: tour lazer e localização.', 'CTA 5s: Chama no WhatsApp.'],
+      },
+      tips: [
+        'Saldo confortável — pode testar +R$ 20/dia no conjunto com mais mensagens.',
+        'Vídeo tour com CTR 40% maior: duplique o conjunto só com vídeo.',
+        'Frequência 2,4 no remarketing: exclua quem já enviou mensagem em 7 dias.',
+      ],
+    };
+
+    let currentPage = 'inicio';
+    let waConnected = true;
+
+    function brl(n) {
+      return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function tagStatus(s) {
+      if (s === 'ACTIVE') return '<span class="tag tag-success">ACTIVE</span>';
+      if (s === 'PAUSED') return '<span class="tag tag-warning">PAUSED</span>';
+      return `<span class="tag tag-muted">${s}</span>`;
+    }
+
+    const PAGES = {
+      inicio() {
+        return `
+          <div class="alert alert-info">Protótipo estático do <strong>LeadMaster</strong> — todos os módulos navegáveis com dados mock.</div>
+          <div class="grid grid-2" style="align-items:start">
+            <div>
+              <h2 class="hero-title">Crie a sua campanha com <em>I.A.</em> para vender o seu imóvel</h2>
+              <p class="text-muted" style="margin-bottom:1rem">Briefing Meta Ads → IA gera textos, títulos, criativos e follow-up WhatsApp. Publicação em PAUSED pela API quando a conta Meta estiver ligada.</p>
+              <button class="btn btn-primary" onclick="go('briefing')">Preencher briefing e gerar campanha →</button>
+            </div>
+            <div class="card" style="text-align:center;padding:2rem;background:linear-gradient(135deg,#a78bfa,#6366f1);color:#fff;border:none">
+              <div style="font-size:3rem;margin-bottom:0.5rem">🏠</div>
+              <div style="font-weight:600">Meta Ads + WhatsApp</div>
+              <div style="font-size:0.85rem;opacity:0.9;margin-top:0.25rem">Campanha inteligente para imóveis</div>
+            </div>
+          </div>
+          <h3 style="font-size:1rem;margin:1.25rem 0 0.75rem">Imóveis ativos <span class="tag tag-primary">${DATA.listings.length}</span></h3>
+          <div class="listing-scroll">
+            ${DATA.listings.map(l => `
+              <div class="card listing-card" style="border-top-color:${l.accent}">
+                <strong>${l.title}</strong>
+                <div class="text-muted" style="font-size:0.8rem;margin:0.25rem 0">${l.city} · ${l.price}${l.beds ? ` · ${l.beds} quartos` : ''}</div>
+                <div style="font-size:0.78rem;margin-top:0.5rem"><strong>Headline:</strong> ${l.headline}</div>
+                <div style="margin-top:0.5rem"><span class="tag tag-success">ACTIVE</span> <span class="tag tag-muted">${l.cta}</span></div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      },
+
+      campanhas() {
+        return `
+          <div class="tabs">
+            <button class="tab active">Meta Ads (API)</button>
+            <button class="tab">Campanhas Guerova (salvas)</button>
+            <button class="tab">Google Ads</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Campanhas Meta · act_1857209318456078</div>
+            <table>
+              <thead><tr><th>Nome</th><th>Status</th><th>Gasto 7d</th><th>Leads</th><th>CPL</th><th></th></tr></thead>
+              <tbody>
+                ${DATA.campaigns.map(c => `
+                  <tr>
+                    <td><strong>${c.name}</strong><br><span class="text-muted" style="font-size:0.72rem">${c.platform}</span></td>
+                    <td>${tagStatus(c.status)}</td>
+                    <td>${brl(c.spend)}</td>
+                    <td>${c.leads}</td>
+                    <td>${brl(c.cpl)}</td>
+                    <td><button class="btn btn-sm btn-outline">Editar</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-title">Dicas de otimização (IA)</div>
+            <ul style="font-size:0.85rem;padding-left:1.25rem;color:var(--muted)">
+              ${DATA.tips.map(t => `<li style="margin-bottom:0.35rem">${t}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      },
+
+      briefing() {
+        return `
+          <div class="grid grid-2" style="align-items:start">
+            <div class="card">
+              <div class="card-title">Briefing Meta Ads</div>
+              <div class="form-group"><label>Objetivo</label><select><option>Engajamento: Conversas iniciadas pelo WhatsApp</option></select></div>
+              <div class="form-group"><label>Nome da campanha</label><input value="Guaiãzes 2Q — Jun/2025" /></div>
+              <div class="form-group"><label>Imóvel</label><input value="Apartamento 2 dorms — Guaiãzes" /></div>
+              <div class="form-group"><label>Faixa de preço</label><input value="R$ 289.000" /></div>
+              <div class="form-group"><label>Público-alvo</label><input value="Homens e mulheres, 25 a 55 anos" /></div>
+              <div class="form-group"><label>Geo</label><input value="São Paulo, SP — raio 15 km" /></div>
+              <div class="form-group"><label>Orçamento diário</label><input value="R$ 50,00 por dia" /></div>
+              <button class="btn btn-primary" onclick="go('briefing-result')">Gerar pacote com IA →</button>
+            </div>
+            <div class="card">
+              <div class="card-title">Fluxo do produto</div>
+              <ol style="font-size:0.85rem;color:var(--muted);padding-left:1.25rem;line-height:1.8">
+                <li>Preencher briefing do imóvel</li>
+                <li>IA (Gemini) gera pacote de campanha</li>
+                <li>Revisar textos, headlines e roteiro de vídeo</li>
+                <li>Publicar no Meta Ads (PAUSED) via API</li>
+                <li>Acompanhar no Relatório e Dashboard BI</li>
+              </ol>
+            </div>
+          </div>
+        `;
+      },
+
+      'briefing-result'() {
+        const p = DATA.pack;
+        return `
+          <button class="btn btn-outline btn-sm" style="margin-bottom:1rem" onclick="go('briefing')">← Voltar ao briefing</button>
+          <div class="alert alert-info">Pacote gerado pela IA (mock) — pronto para colar no Gerenciador de Anúncios.</div>
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-title">Texto principal</div>
+              <p style="font-size:0.85rem;line-height:1.5">${p.primary}</p>
+              <div class="card-title" style="margin-top:1rem">Headlines</div>
+              <ul style="font-size:0.85rem;padding-left:1.25rem">${p.headlines.map(h => `<li>${h}</li>`).join('')}</ul>
+            </div>
+            <div class="card">
+              <div class="card-title">Follow-up WhatsApp</div>
+              <p style="font-size:0.85rem;background:#f0fdf4;padding:0.75rem;border-radius:8px;border:1px solid #bbf7d0">${p.whatsapp}</p>
+              <div class="card-title" style="margin-top:1rem">Roteiro de vídeo</div>
+              <ul style="font-size:0.82rem;padding-left:1.25rem;color:var(--muted)">${p.video.map(v => `<li style="margin-bottom:0.3rem">${v}</li>`).join('')}</ul>
+            </div>
+          </div>
+          <div style="margin-top:1rem;display:flex;gap:0.5rem">
+            <button class="btn btn-primary">Publicar no Meta (PAUSED)</button>
+            <button class="btn btn-outline" onclick="go('campanhas')">Ver em Campanhas</button>
+          </div>
+        `;
+      },
+
+      relatorio() {
+        const t = DATA.relatorio.totals;
+        const ctr = ((t.clicks / t.impressions) * 100).toFixed(2);
+        return `
+          <div class="grid grid-4" style="margin-bottom:1rem">
+            <div class="card kpi"><div class="kpi-label">Impressões</div><div class="kpi-value">${t.impressions.toLocaleString('pt-BR')}</div></div>
+            <div class="card kpi"><div class="kpi-label">Cliques</div><div class="kpi-value">${t.clicks.toLocaleString('pt-BR')}</div><div class="kpi-delta">CTR ${ctr}%</div></div>
+            <div class="card kpi"><div class="kpi-label">Investido</div><div class="kpi-value">${brl(t.spend)}</div></div>
+            <div class="card kpi"><div class="kpi-label">Conversas WA</div><div class="kpi-value">${t.conversations}</div><div class="kpi-delta">Custo/conv. ${brl(t.spend / t.conversations)}</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Campanhas · últimos 30 dias</div>
+            <table>
+              <thead><tr><th>Campanha</th><th>Status</th><th>Impressões</th><th>Cliques</th><th>Gasto</th><th>Conversas</th><th>CPC</th></tr></thead>
+              <tbody>
+                ${DATA.relatorio.campaigns.map(c => `
+                  <tr>
+                    <td><strong>${c.name}</strong></td>
+                    <td>${tagStatus(c.status)}</td>
+                    <td>${c.impressions.toLocaleString('pt-BR')}</td>
+                    <td>${c.clicks}</td>
+                    <td>${brl(c.spend)}</td>
+                    <td>${c.conversations}</td>
+                    <td>${brl(c.cpc)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      },
+
+      dashboard() {
+        const maxF = DATA.bi.funnel[0].count;
+        return `
+          <div class="grid grid-5" style="margin-bottom:1rem">
+            ${DATA.bi.kpis.map(k => `
+              <div class="card kpi">
+                <div class="kpi-label">${k.label}</div>
+                <div class="kpi-value">${k.value}</div>
+                <div class="kpi-delta ${k.neutral ? 'down' : ''}" style="${k.neutral ? 'color:var(--muted)' : ''}">${k.delta}</div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="card" style="margin-bottom:1rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+              <strong>Meta de vendas 2025</strong>
+              <span style="font-size:1.5rem;font-weight:700;color:var(--primary)">${DATA.bi.goal.pct}%</span>
+            </div>
+            <div style="background:#e2e8f0;border-radius:999px;height:12px;overflow:hidden">
+              <div style="width:${DATA.bi.goal.pct}%;height:100%;background:linear-gradient(90deg,var(--primary-dark),var(--primary))"></div>
+            </div>
+            <div class="text-muted" style="font-size:0.8rem;margin-top:0.35rem">${DATA.bi.goal.achieved} de ${DATA.bi.goal.target}</div>
+          </div>
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-title">Funil de conversão</div>
+              ${DATA.bi.funnel.map((f, i) => `
+                <div class="funnel-step">
+                  <div class="funnel-bar" style="width:${Math.max(25, (f.count / maxF) * 100)}%">
+                    <strong>${f.stage}</strong> — ${f.count.toLocaleString('pt-BR')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="card">
+              <div class="card-title">Top estados (R$ mil)</div>
+              ${DATA.bi.states.map(s => `
+                <div style="display:grid;grid-template-columns:32px 1fr 48px;gap:0.5rem;align-items:center;margin-bottom:0.4rem;font-size:0.82rem">
+                  <strong>${s.uf}</strong>
+                  <div style="background:#f1f5f9;border-radius:4px;height:8px"><div style="width:${(s.v/812)*100}%;height:100%;background:var(--primary);border-radius:4px"></div></div>
+                  <span>${s.v}k</span>
+                </div>
+              `).join('')}
+              <div class="card-title" style="margin-top:1rem">Top mentorados</div>
+              <table>
+                <thead><tr><th>#</th><th>Nome</th><th>Lucro</th><th>ROI</th></tr></thead>
+                <tbody>
+                  ${DATA.bi.mentorados.map(m => `<tr><td>${m.rank}</td><td>${m.name} <span class="tag tag-primary">${m.level}</span></td><td>${brl(m.profit)}</td><td style="color:var(--success);font-weight:700">${m.roi}x</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      },
+
+      crm() {
+        const cols = Object.entries(DATA.kanban);
+        const fechadoSum = 18500 + 12200;
+        return `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <div>
+              <strong>Pipeline de leads</strong>
+              <span class="text-muted" style="font-size:0.85rem;margin-left:0.5rem">Arraste entre colunas no app real</span>
+            </div>
+            <div class="tag tag-success">Fechado: ${brl(fechadoSum)} (${DATA.kanban.Fechado.length} negócios)</div>
+          </div>
+          <div class="kanban">
+            ${cols.map(([col, leads]) => `
+              <div class="kanban-col">
+                <h4>${col} (${leads.length})</h4>
+                ${leads.map(l => `
+                  <div class="lead-card" onclick="go('whatsapp')">
+                    <strong>${l.name}</strong>
+                    <div class="text-muted">${l.phone}</div>
+                    <div style="margin-top:0.25rem;font-size:0.75rem">${l.ctx}</div>
+                    ${l.value ? `<div class="tag tag-success" style="margin-top:0.35rem">${l.value}</div>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      },
+
+      whatsapp() {
+        return `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <div>
+              ${waConnected
+                ? '<span class="tag tag-success">Conectado</span> <span class="text-muted" style="font-size:0.85rem">Sessão ativa — conversas do Guerova</span>'
+                : '<span class="tag tag-warning">Desconectado</span>'}
+            </div>
+            <button class="btn btn-sm btn-outline" onclick="toggleWa()">${waConnected ? 'Desconectar' : 'Mostrar QR Code'}</button>
+          </div>
+          ${!waConnected ? '<div class="alert alert-warning">Escaneie o QR Code no telemóvel (WhatsApp → Aparelhos conectados) para ativar o envio.</div>' : ''}
+          <div class="wa-layout">
+            <div class="wa-list">
+              ${DATA.whatsapp.chats.map((c, i) => `
+                <div class="wa-chat-item ${i === 0 ? 'active' : ''}">
+                  <span class="time">${c.time}</span>
+                  <strong>${c.name}</strong><br>
+                  <span class="text-muted" style="font-size:0.75rem">${c.last}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div>
+              <div style="padding:0.65rem 1rem;background:#075e54;color:#fff;font-size:0.85rem">
+                <strong>João Silva</strong> · (11) 98765-4321
+              </div>
+              <div class="wa-thread">
+                ${DATA.whatsapp.messages.map(m => `
+                  <div class="wa-bubble ${m.from}">${m.text}<div style="font-size:0.65rem;color:var(--muted);margin-top:0.2rem;text-align:right">${m.time}</div></div>
+                `).join('')}
+              </div>
+              <div style="padding:0.65rem;display:flex;gap:0.5rem;border-top:1px solid var(--border)">
+                <input style="flex:1;padding:0.45rem;border:1px solid var(--border);border-radius:999px" placeholder="Digite uma mensagem…" ${waConnected ? '' : 'disabled'} />
+                <button class="btn btn-primary btn-sm" ${waConnected ? '' : 'disabled'}>Enviar</button>
+              </div>
+            </div>
+          </div>
+        `;
+      },
+
+      scraping() {
+        return `
+          <div class="card">
+            <div class="card-title">Scraping B2B (mock)</div>
+            <div class="grid grid-3" style="margin-bottom:1rem">
+              <div class="form-group"><label>Fonte</label><select><option>OpenStreetMap</option><option>Google Places</option></select></div>
+              <div class="form-group"><label>Cidade</label><input value="São Paulo, SP" /></div>
+              <div class="form-group"><label>Quantidade</label><input type="number" value="10" /></div>
+            </div>
+            <button class="btn btn-primary">Executar scraping</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Resultados (4 leads)</div>
+            <table>
+              <thead><tr><th>Empresa</th><th>Cidade</th><th>Setor</th><th>Telefone</th></tr></thead>
+              <tbody>
+                ${DATA.scraping.map(r => `<tr><td><strong>${r.nome}</strong></td><td>${r.cidade}</td><td>${r.setor}</td><td>${r.tel}</td></tr>`).join('')}
+              </tbody>
+            </table>
+            <button class="btn btn-outline btn-sm" style="margin-top:0.75rem">Exportar CSV</button>
+          </div>
+          <p class="text-muted" style="font-size:0.8rem">Em produção: jobs assíncronos, validação LGPD e opt-in antes de campanhas.</p>
+        `;
+      },
+
+      score() {
+        return `
+          <div class="alert alert-warning"><strong>Modo mock.</strong> CPF de exemplo: <code>39053344705</code> (bom), <code>11144477735</code> (médio).</div>
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-title">Consulta Serasa Anti Fraud</div>
+              <div class="form-group"><label>CPF</label><input value="39053344705" /></div>
+              <button class="btn btn-primary">Consultar score</button>
+            </div>
+            <div class="card" style="text-align:center">
+              <div class="card-title">Resultado (mock)</div>
+              <div class="gauge"><div class="gauge-inner">720</div></div>
+              <p style="margin-top:0.75rem;font-size:0.85rem"><strong>Score de crédito</strong> — Baixo risco</p>
+              <p class="text-muted" style="font-size:0.78rem">CPF 390.533.447-05 · consulta simulada</p>
+            </div>
+          </div>
+        `;
+      },
+
+      admin() {
+        return `
+          <div class="grid grid-2" style="align-items:start">
+            <div class="card">
+              <div class="card-title">Novo usuário</div>
+              <div class="form-group"><label>Nome</label><input placeholder="Nome completo" /></div>
+              <div class="form-group"><label>E-mail</label><input type="email" placeholder="email@empresa.com" /></div>
+              <div class="form-group"><label>Senha</label><input type="password" /></div>
+              <div class="form-group"><label><input type="checkbox" /> System admin</label></div>
+              <button class="btn btn-primary">Criar usuário</button>
+            </div>
+            <div class="card">
+              <div class="card-title">Usuários</div>
+              <table>
+                <thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th></tr></thead>
+                <tbody>
+                  ${DATA.users.map(u => `<tr><td><strong>${u.name}</strong>${u.admin ? ' <span class="tag tag-warning">admin</span>' : ''}</td><td>${u.email}</td><td>${u.role}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      },
+
+      configuracao() {
+        return `
+          <div class="alert alert-info">Conexão Meta Ads — token e conta de anúncios para publicar campanhas pela API.</div>
+          <div class="card">
+            <div class="card-title">Meta Ads (Marketing API)</div>
+            <div class="form-group"><label>Token de acesso</label><input type="password" value="EAA••••••••••••••••" readonly /></div>
+            <div class="form-group"><label>Conta de anúncios</label><input value="act_1857209318456078" readonly /></div>
+            <div class="form-group"><label>Page ID</label><input value="1094861130375743" readonly /></div>
+            <div class="form-group"><label>Graph API version</label><input value="v21.0" readonly /></div>
+            <div style="display:flex;gap:0.5rem">
+              <button class="btn btn-primary">Salvar conexão</button>
+              <button class="btn btn-outline">Testar publicação</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">WhatsApp Cloud API (opcional)</div>
+            <p class="text-muted" style="font-size:0.85rem">Token e Phone Number ID configurados no backend. O painel WhatsApp Web (QR) é independente.</p>
+            <div class="grid grid-2">
+              <div><span class="tag tag-success">Configurado</span> Envio Graph API</div>
+              <div><span class="tag tag-success">Configurado</span> Webhook verify token</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Gemini (IA de campanhas)</div>
+            <div class="form-group"><label>Modelo</label><input value="gemini-2.5-flash" readonly /></div>
+            <span class="tag tag-success">API Key configurada</span>
+          </div>
+        `;
+      },
+    };
+
+    function renderNav() {
+      document.getElementById('nav').innerHTML = NAV.map(n => `
+        <button class="nav-item ${n.id === currentPage || (currentPage === 'briefing-result' && n.id === 'briefing') ? 'active' : ''}" onclick="go('${n.id}')">
+          <span class="nav-icon">${n.icon}</span>
+          <span>${n.label}</span>
+        </button>
+      `).join('');
+    }
+
+    function go(id) {
+      currentPage = id;
+      const item = NAV.find(n => n.id === id) || { label: id === 'briefing-result' ? 'Pacote IA' : id };
+      document.getElementById('page-title').textContent = item.label || 'Pacote IA';
+      const render = PAGES[id];
+      document.getElementById('content').innerHTML = render ? render() : '<p>Página não encontrada.</p>';
+      renderNav();
+      document.querySelector('.content').scrollTop = 0;
+    }
+
+    function toggleWa() {
+      waConnected = !waConnected;
+      go('whatsapp');
+    }
+
+    renderNav();
+    go('inicio');
+  </script>
+</body>
+</html>

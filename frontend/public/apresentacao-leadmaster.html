@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guerova LeadMaster — BI Imobiliário (demo)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef1f6;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #1d4ed8;
+      --primary-light: #3b82f6;
+      --success: #16a34a;
+      --accent: #6366f1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .deck {
+      scroll-snap-type: y mandatory;
+      overflow-y: auto;
+      height: 100vh;
+    }
+
+    .slide {
+      scroll-snap-align: start;
+      min-height: 100vh;
+      padding: 2.5rem 3rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .slide--hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #1d4ed8 100%);
+      color: #fff;
+      text-align: center;
+      max-width: none;
+    }
+
+    .slide--hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.75rem;
+    }
+
+    .slide--hero p {
+      font-size: 1.15rem;
+      opacity: 0.88;
+      max-width: 640px;
+      margin: 0 auto 2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    .slide-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.35rem;
+    }
+
+    .slide-sub {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.2rem;
+    }
+
+    .kpi-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .kpi-value {
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-delta {
+      font-size: 0.8rem;
+      margin-top: 0.35rem;
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .kpi-delta.neutral { color: var(--muted); }
+
+    .goal-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .goal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .goal-bar {
+      height: 14px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .goal-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--primary-light));
+      border-radius: 999px;
+      transition: width 1s ease;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .slide { padding: 1.5rem; }
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      height: 100%;
+    }
+
+    .panel h3 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .funnel-row {
+      display: grid;
+      grid-template-columns: 1fr 72px 56px 56px;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.82rem;
+    }
+
+    .funnel-row:last-child { border-bottom: none; }
+
+    .funnel-bar-wrap {
+      background: #f1f5f9;
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .funnel-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+
+    .funnel-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+    .funnel-pct { text-align: right; font-weight: 600; font-size: 0.78rem; }
+
+    .chart-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.65rem;
+      height: 200px;
+      padding-top: 0.5rem;
+    }
+
+    .chart-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .chart-bar {
+      width: 100%;
+      max-width: 48px;
+      border-radius: 6px 6px 0 0;
+      min-height: 4px;
+    }
+
+    .chart-bar--sales { background: var(--primary); }
+    .chart-bar--traffic { background: #94a3b8; }
+
+    .chart-label { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
+
+    .legend {
+      display: flex;
+      gap: 1.25rem;
+      margin-top: 0.75rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .legend span::before {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 0.35rem;
+      vertical-align: middle;
+    }
+
+    .legend .sales::before { background: var(--primary); }
+    .legend .traffic::before { background: #94a3b8; }
+
+    .donut-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .donut {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .donut-legend {
+      list-style: none;
+      font-size: 0.82rem;
+    }
+
+    .donut-legend li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .state-bars .row {
+      display: grid;
+      grid-template-columns: 36px 1fr 90px;
+      gap: 0.65rem;
+      align-items: center;
+      margin-bottom: 0.55rem;
+      font-size: 0.82rem;
+    }
+
+    .state-bars .bar-bg {
+      background: #f1f5f9;
+      border-radius: 4px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    .state-bars .bar-fill {
+      height: 100%;
+      background: var(--primary-light);
+      border-radius: 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    th {
+      text-align: left;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      padding: 0.5rem 0.6rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    td {
+      padding: 0.55rem 0.6rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    tr:hover td { background: #f8fafc; }
+
+    .level {
+      display: inline-block;
+      font-weight: 700;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: #dbeafe;
+      color: var(--primary);
+    }
+
+    .roi-good { color: var(--success); font-weight: 700; }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      background: var(--card);
+    }
+
+    .nav-hint {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      background: var(--text);
+      color: #fff;
+      font-size: 0.72rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      opacity: 0.75;
+      z-index: 10;
+    }
+
+    @media print {
+      .deck { height: auto; overflow: visible; }
+      .slide { min-height: auto; page-break-after: always; }
+      .nav-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck" id="deck">
+    <!-- Slide 1: Capa -->
+    <section class="slide slide--hero">
+      <div class="badge">Dados demonstrativos</div>
+      <h1>Guerova LeadMaster</h1>
+      <p>Business Intelligence para assessorias imobiliárias — Meta Ads, WhatsApp, funil de vendas e performance dos mentorados.</p>
+      <p style="font-size:0.9rem;opacity:0.7">Junho 2025 · Four Assessoria (mock)</p>
+    </section>
+
+    <!-- Slide 2: KPIs + Meta -->
+    <section class="slide" id="slide-kpis"></section>
+
+    <!-- Slide 3: Funil -->
+    <section class="slide" id="slide-funnel"></section>
+
+    <!-- Slide 4: Gráficos -->
+    <section class="slide" id="slide-charts"></section>
+
+    <!-- Slide 5: Estados + Origem -->
+    <section class="slide" id="slide-geo"></section>
+
+    <!-- Slide 6: Mentorados -->
+    <section class="slide" id="slide-mentorados"></section>
+
+    <!-- Slide 7: Tráfego -->
+    <section class="slide" id="slide-traffic"></section>
+  </div>
+
+  <div class="footer-note">Arquivo gerado para apresentação · Dados fictícios do painel Guerova · <code>frontend/public/apresentacao-leadmaster.html</code></div>
+  <div class="nav-hint">↓ role para navegar</div>
+
+  <script>
+    const DATA = {
+      salesGoal: { year: 2025, achieved: 4300000, target: 10000000, pct: 43, deltaPct: 8.3 },
+      kpis: [
+        { label: 'Mentorados Ativos', value: '250', delta: '↑ 18 este mês', positive: true },
+        { label: 'Imóveis Vendidos', value: '87', delta: '↑ 12% MoM', positive: true },
+        { label: 'Ticket Médio', value: 'R$49.4k', delta: 'Estável', positive: null },
+        { label: 'Gasto Total Tráfego', value: 'R$84.2k', delta: '↑ 5.1% MoM', positive: true },
+        { label: 'ROI Tráfego', value: '51x', delta: '↑ Excelente', positive: true },
+      ],
+      funnel: [
+        { stage: 'Impressões (Alcance)', count: 185000, stepConv: 100, totalConv: 100.0 },
+        { stage: 'Cliques no Anúncio', count: 12400, stepConv: 7, totalConv: 6.7 },
+        { stage: 'Acessos ao WhatsApp', count: 4820, stepConv: 39, totalConv: 2.6 },
+        { stage: 'Conversas Iniciadas', count: 2100, stepConv: 44, totalConv: 1.1 },
+        { stage: 'Leads Qualificados', count: 620, stepConv: 30, totalConv: 0.3 },
+        { stage: 'Propostas Enviadas', count: 142, stepConv: 23, totalConv: 0.1 },
+        { stage: 'Vendas Realizadas', count: 87, stepConv: 61, totalConv: 0.0 },
+      ],
+      funnelTotal: 1.74,
+      monthly: [
+        { month: 'Jan', vendas: 520000, trafego: 11200 },
+        { month: 'Fev', vendas: 610000, trafego: 12800 },
+        { month: 'Mar', vendas: 780000, trafego: 14100 },
+        { month: 'Abr', vendas: 690000, trafego: 13500 },
+        { month: 'Mai', vendas: 850000, trafego: 15800 },
+        { month: 'Jun', vendas: 850000, trafego: 16800 },
+      ],
+      propertyTypes: [
+        { name: 'Apartamento', value: 38, color: '#4f46e5' },
+        { name: 'Casa', value: 27, color: '#2563eb' },
+        { name: 'Terreno', value: 15, color: '#0ea5e9' },
+        { name: 'Comercial', value: 12, color: '#14b8a6' },
+        { name: 'Lote', value: 8, color: '#8b5cf6' },
+      ],
+      leadSources: [
+        { name: 'Meta Ads', value: 68, color: '#1877f2' },
+        { name: 'Google Ads', value: 18, color: '#ea4335' },
+        { name: 'Orgânico', value: 9, color: '#22c55e' },
+        { name: 'Indicação', value: 5, color: '#f59e0b' },
+      ],
+      states: [
+        { uf: 'RJ', sales: 812000 },
+        { uf: 'SP', sales: 762000 },
+        { uf: 'SC', sales: 356000 },
+        { uf: 'MG', sales: 323000 },
+        { uf: 'PR', sales: 297000 },
+        { uf: 'RS', sales: 210000 },
+        { uf: 'PE', sales: 114000 },
+        { uf: 'GO', sales: 85000 },
+        { uf: 'BA', sales: 79000 },
+      ],
+      mentorados: [
+        { rank: 1, name: 'Priscila Gomes', level: 'A', state: 'GO', profit: 67000, traffic: 860, roi: 77.9 },
+        { rank: 2, name: 'Amanda Barbosa', level: 'A', state: 'SP', profit: 66000, traffic: 930, roi: 71 },
+        { rank: 3, name: 'Thiago Oliveira', level: 'A', state: 'SP', profit: 66000, traffic: 670, roi: 98.5 },
+        { rank: 4, name: 'Gabriel Gomes', level: 'A', state: 'RJ', profit: 65000, traffic: 740, roi: 87.8 },
+        { rank: 5, name: 'Isabela Oliveira', level: 'A', state: 'RJ', profit: 64000, traffic: 550, roi: 116.4 },
+        { rank: 6, name: 'Gustavo Moraes', level: 'A', state: 'PR', profit: 61000, traffic: 990, roi: 61.6 },
+        { rank: 7, name: 'Marcelo Oliveira', level: 'A', state: 'SC', profit: 61000, traffic: 440, roi: 138.6 },
+        { rank: 8, name: 'Bruno Pereira', level: 'A', state: 'RJ', profit: 60000, traffic: 940, roi: 63.8 },
+        { rank: 9, name: 'Marcelo Moraes', level: 'A', state: 'SP', profit: 60000, traffic: 870, roi: 69 },
+        { rank: 10, name: 'Mariana Lima', level: 'A', state: 'SC', profit: 60000, traffic: 800, roi: 75 },
+      ],
+      traffic: [
+        { name: 'Gustavo Moraes', spend: 990, revenue: 61000, roi: 61.6 },
+        { name: 'Camila Araújo', spend: 990, revenue: 10000, roi: 10.1 },
+        { name: 'Mariana Almeida', spend: 960, revenue: 53000, roi: 55.2 },
+        { name: 'Carlos Ribeiro', spend: 960, revenue: 35000, roi: 36.5 },
+        { name: 'Priscila Lima', spend: 960, revenue: 27000, roi: 28.1 },
+        { name: 'Mariana Costa', spend: 1000, revenue: null, roi: null },
+        { name: 'Felipe Ribeiro', spend: 1000, revenue: null, roi: null },
+        { name: 'Rafael Pereira', spend: 1000, revenue: null, roi: null },
+      ],
+    };
+
+    function brl(n, compact) {
+      if (n == null) return '—';
+      if (compact && n >= 1e6) return 'R$ ' + (n / 1e6).toFixed(1).replace('.', ',') + 'M';
+      if (compact && n >= 1e3) return 'R$ ' + (n / 1e3).toFixed(1).replace('.', ',') + 'k';
+      return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+    }
+
+    function fmtNum(n) {
+      return n.toLocaleString('pt-BR');
+    }
+
+    function donutGradient(items) {
+      let acc = 0;
+      const stops = items.map((i) => {
+        const start = acc;
+        acc += i.value;
+        return `${i.color} ${start}% ${acc}%`;
+      });
+      return `conic-gradient(${stops.join(', ')})`;
+    }
+
+    // KPIs
+    document.getElementById('slide-kpis').innerHTML = `
+      <h2 class="slide-title">Visão geral</h2>
+      <p class="slide-sub">KPIs consolidados da rede de mentorados · Meta Ads + WhatsApp</p>
+      <div class="kpi-grid">
+        ${DATA.kpis.map((k) => `
+          <div class="kpi">
+            <div class="kpi-label">${k.label}</div>
+            <div class="kpi-value">${k.value}</div>
+            <div class="kpi-delta ${k.positive === null ? 'neutral' : ''}">${k.delta}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="goal-card">
+        <div class="goal-header">
+          <div>
+            <strong>Meta de vendas ${DATA.salesGoal.year}</strong>
+            <div style="font-size:0.85rem;color:var(--muted);margin-top:0.25rem">
+              ${brl(DATA.salesGoal.achieved, true)} de ${brl(DATA.salesGoal.target, true)}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:1.75rem;font-weight:700;color:var(--primary)">${DATA.salesGoal.pct}%</div>
+            <div style="font-size:0.8rem;color:var(--success);font-weight:600">↑ ${DATA.salesGoal.deltaPct}% vs mês anterior</div>
+          </div>
+        </div>
+        <div class="goal-bar"><div class="goal-fill" style="width:${DATA.salesGoal.pct}%"></div></div>
+      </div>
+    `;
+
+    // Funil
+    const maxFunnel = DATA.funnel[0].count;
+    document.getElementById('slide-funnel').innerHTML = `
+      <h2 class="slide-title">Funil de conversão</h2>
+      <p class="slide-sub">Do alcance Meta Ads até a venda · conversão total <strong>${DATA.funnelTotal}%</strong></p>
+      <div class="panel">
+        <div class="funnel-row" style="font-weight:600;font-size:0.7rem;color:var(--muted);border:none">
+          <span>Etapa</span><span></span><span style="text-align:right">Volume</span><span style="text-align:right">Etapa</span>
+        </div>
+        ${DATA.funnel.map((f) => `
+          <div class="funnel-row">
+            <div>
+              <div style="font-weight:600;margin-bottom:0.25rem">${f.stage}</div>
+              <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:${(f.count / maxFunnel) * 100}%"></div></div>
+            </div>
+            <span class="funnel-num">${fmtNum(f.count)}</span>
+            <span class="funnel-pct">${f.stepConv}%</span>
+            <span class="funnel-pct" style="color:var(--muted)">${f.totalConv}%</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    // Gráficos mensais + tipos
+    const maxVendas = Math.max(...DATA.monthly.map((m) => m.vendas));
+    const maxTrafego = Math.max(...DATA.monthly.map((m) => m.trafego));
+    document.getElementById('slide-charts').innerHTML = `
+      <h2 class="slide-title">Vendas × Tráfego</h2>
+      <p class="slide-sub">Evolução mensal · investimento em mídia vs receita de vendas</p>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Receita e gasto (Jan–Jun)</h3>
+          <div class="chart-bars">
+            ${DATA.monthly.map((m) => `
+              <div class="chart-col">
+                <div class="chart-bar chart-bar--sales" style="height:${(m.vendas / maxVendas) * 160}px" title="Vendas ${brl(m.vendas)}"></div>
+                <div class="chart-bar chart-bar--traffic" style="height:${(m.trafego / maxTrafego) * 80}px" title="Tráfego ${brl(m.trafego)}"></div>
+                <span class="chart-label">${m.month}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="legend">
+            <span class="sales">Vendas</span>
+            <span class="traffic">Tráfego (R$)</span>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Mix de imóveis vendidos</h3>
+          <div class="donut-wrap">
+            <div class="donut" style="background:${donutGradient(DATA.propertyTypes)}"></div>
+            <ul class="donut-legend">
+              ${DATA.propertyTypes.map((p) => `
+                <li><span class="dot" style="background:${p.color}"></span>${p.name} <strong>${p.value}%</strong></li>
+              `).join('')}
+            </ul>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Geo + fontes
+    const maxState = DATA.states[0].sales;
+    document.getElementById('slide-geo').innerHTML = `
+      <h2 class="slide-title">Distribuição geográfica</h2>
+      <p class="slide-sub">Receita por estado e origem dos leads</p>
+      <div class="grid-2">
+        <div class="panel state-bars">
+          <h3>Top estados (receita)</h3>
+          ${DATA.states.map((s) => `
+            <div class="row">
+              <strong>${s.uf}</strong>
+              <div class="bar-bg"><div class="bar-fill" style="width:${(s.sales / maxState) * 100}%"></div></div>
+              <span style="text-align:right;font-weight:600">${brl(s.sales, true)}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="panel">
+          <h3>Origem dos leads</h3>
+          <div class="donut-wrap">
+            <div class="donut" style="background:${donutGradient(DATA.leadSources)}"></div>
+            <ul class="donut-legend">
+              ${DATA.leadSources.map((s) => `
+                <li><span class="dot" style="background:${s.color}"></span>${s.name} <strong>${s.value}%</strong></li>
+              `).join('')}
+            </ul>
+          </div>
+          <p style="margin-top:1rem;font-size:0.82rem;color:var(--muted)">
+            <strong>68%</strong> dos leads vêm de campanhas Meta com destino WhatsApp Business.
+          </p>
+        </div>
+      </div>
+    `;
+
+    // Mentorados
+    document.getElementById('slide-mentorados').innerHTML = `
+      <h2 class="slide-title">Top mentorados</h2>
+      <p class="slide-sub">Ranking por lucro na operação · níveis A/B/C</p>
+      <div class="panel" style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Nome</th><th>Nível</th><th>UF</th>
+              <th>Lucro</th><th>Tráfego</th><th>ROI</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${DATA.mentorados.map((m) => `
+              <tr>
+                <td>${m.rank}</td>
+                <td><strong>${m.name}</strong></td>
+                <td><span class="level">${m.level}</span></td>
+                <td>${m.state}</td>
+                <td>${brl(m.profit)}</td>
+                <td>${brl(m.traffic)}</td>
+                <td class="roi-good">${m.roi}x</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // Tráfego
+    document.getElementById('slide-traffic').innerHTML = `
+      <h2 class="slide-title">Performance de tráfego</h2>
+      <p class="slide-sub">Investimento individual vs receita gerada · ROI por mentorado</p>
+      <div class="panel" style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Mentorado</th><th>Investido</th><th>Receita</th><th>ROI</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${DATA.traffic.map((t) => `
+              <tr>
+                <td><strong>${t.name}</strong></td>
+                <td>${brl(t.spend)}</td>
+                <td>${t.revenue != null ? brl(t.revenue) : '—'}</td>
+                <td>${t.roi != null ? `<span class="roi-good">${t.roi}x</span>` : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:1.25rem;font-size:0.85rem;color:var(--muted);text-align:center">
+        Gasto total da rede: <strong>${brl(84200)}</strong> · Receita atribuída: <strong>${brl(4300000, true)}</strong> · ROI médio: <strong>51x</strong>
+      </p>
+    `;
+  </script>
+</body>
+</html>
