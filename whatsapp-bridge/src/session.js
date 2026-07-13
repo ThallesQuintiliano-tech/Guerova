@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import makeWASocket, {
   Browsers,
   DisconnectReason,
-  fetchLatestBaileysVersion,
+  fetchLatestWaWebVersion,
   useMultiFileAuthState,
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
@@ -92,6 +92,11 @@ function clearAuthFiles() {
   }
 }
 
+/** Só restaura sessão WhatsApp se existirem credenciais Baileys (não basta system_chats.json). */
+function hasWhatsAppAuthCreds() {
+  return fs.existsSync(path.join(AUTH_DIR, 'creds.json'));
+}
+
 function disconnectCode(update) {
   return update?.lastDisconnect?.error?.output?.statusCode;
 }
@@ -110,6 +115,19 @@ function scheduleReconnect(delayMs = 2000) {
   }, delayMs);
 }
 
+async function resolveWaVersion() {
+  const fallback = [2, 3000, 1023223821];
+  try {
+    const { version, error } = await fetchLatestWaWebVersion({ timeout: 8000 });
+    if (!error && Array.isArray(version) && version.length === 3) {
+      return version;
+    }
+  } catch {
+    /* usa fallback */
+  }
+  return fallback;
+}
+
 async function createSocket({ preserveAuth = false } = {}) {
   if (!preserveAuth && userInitiatedSession) {
     clearAuthFiles();
@@ -125,18 +143,18 @@ async function createSocket({ preserveAuth = false } = {}) {
     sock = null;
   }
 
-  const { version } = await fetchLatestBaileysVersion();
+  const { version } = { version: await resolveWaVersion() };
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+  const freshPairing = !state.creds?.registered;
 
   const socket = makeWASocket({
     version,
     auth: state,
     logger,
     printQRInTerminal: false,
-    /** macOS/Chrome — identificador aceito pelo pareamento (evita “não é possível conectar” no telefone). */
-    browser: Browsers.macOS('Chrome'),
-    /** Sincroniza agenda + histórico; o store só preenche as conversas acompanhadas pelo painel. */
-    syncFullHistory: true,
+    browser: Browsers.windows('Chrome'),
+    /** Histórico completo só após pareamento — evita 428 no QR inicial. */
+    syncFullHistory: !freshPairing,
     markOnlineOnConnect: false,
     getMessage: async () => undefined,
   });
@@ -152,6 +170,7 @@ async function createSocket({ preserveAuth = false } = {}) {
       session.status = 'qr';
       session.qr = qr;
       session.lastError = null;
+      starting = false;
       await refreshQrImage(qr);
       logger.info('QR code gerado — escaneie no telemóvel');
     }
@@ -172,6 +191,7 @@ async function createSocket({ preserveAuth = false } = {}) {
     if (connection === 'close') {
       const statusCode = disconnectCode({ lastDisconnect });
       const loggedOut = statusCode === DisconnectReason.loggedOut;
+      const wasConnected = session.status === 'connected';
 
       session.qr = null;
       session.qrImage = null;
@@ -200,13 +220,17 @@ async function createSocket({ preserveAuth = false } = {}) {
 
       sock = null;
 
-      if (shouldReconnect) {
+      if (shouldReconnect && wasConnected) {
         session.lastError = null;
         scheduleReconnect(statusCode === DisconnectReason.restartRequired ? 1000 : 2500);
         return;
       }
 
       clearReconnectTimer();
+      setWhatsAppSocket(null);
+      if (!wasConnected) {
+        clearAuthFiles();
+      }
       session.status = 'disconnected';
       session.user = null;
       starting = false;
@@ -216,7 +240,9 @@ async function createSocket({ preserveAuth = false } = {}) {
           ? 'Esta sessão foi substituída noutro dispositivo. Desligue o WhatsApp Web antigo e tente de novo.'
           : statusCode === DisconnectReason.forbidden
             ? 'WhatsApp recusou a ligação (403). Atualize o app no telemóvel e tente outra vez.'
-            : `Não foi possível concluir a ligação (código ${statusCode ?? '?'}). Clique em «Gerar novo QR».`;
+            : wasConnected
+              ? `Ligação perdida (código ${statusCode ?? '?'}). Clique em «Mostrar QR Code».`
+              : 'Não foi possível obter o QR. Aguarde um minuto e clique em «Mostrar QR Code» novamente.';
     }
   });
 
@@ -246,7 +272,7 @@ export async function restoreSessionIfPossible() {
   if (sock && session.status === 'connected') {
     return getSessionSnapshot();
   }
-  if (!fs.existsSync(AUTH_DIR) || fs.readdirSync(AUTH_DIR).length === 0) {
+  if (!hasWhatsAppAuthCreds()) {
     return getSessionSnapshot();
   }
   if (starting) {
@@ -276,11 +302,17 @@ export async function startSession() {
     return getSessionSnapshot();
   }
 
-  if (starting && session.status !== 'disconnected') {
-    return getSessionSnapshot();
+  /** Interrompe restore automático ou loop de reconexão para gerar novo QR. */
+  clearReconnectTimer();
+  if (sock) {
+    try {
+      sock.end(undefined);
+    } catch {
+      /* ignore */
+    }
+    sock = null;
   }
 
-  clearReconnectTimer();
   starting = true;
   userInitiatedSession = true;
   session.lastError = null;
