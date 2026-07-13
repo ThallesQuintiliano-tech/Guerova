@@ -320,6 +320,46 @@ class MetaAdsApiController extends Controller
                 'summary' => 'total_count',
             ]);
 
+            $campaigns = is_array($resp['data'] ?? null) ? $resp['data'] : [];
+
+            $datePreset = trim((string) $request->query('datePreset', 'last_30d'));
+            if ($datePreset === '') {
+                $datePreset = 'last_30d';
+            }
+
+            $insightsByCampaign = [];
+            try {
+                $insightsResp = $client->get('/'.$act.'/insights', [
+                    'level' => 'campaign',
+                    'date_preset' => $datePreset,
+                    'fields' => 'campaign_id,impressions,clicks,spend,reach,ctr,cpc,cpm,actions,cost_per_action_type',
+                    'limit' => 500,
+                ]);
+                $insightRows = is_array($insightsResp['data'] ?? null) ? $insightsResp['data'] : [];
+                foreach ($insightRows as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $cid = trim((string) ($row['campaign_id'] ?? ''));
+                    if ($cid !== '') {
+                        $insightsByCampaign[$cid] = $row;
+                    }
+                }
+            } catch (Throwable) {
+                // insights opcionais
+            }
+
+            $campaignsOut = [];
+            foreach ($campaigns as $c) {
+                if (! is_array($c)) {
+                    continue;
+                }
+                $cid = trim((string) ($c['id'] ?? ''));
+                $campaignsOut[] = array_merge($c, [
+                    'insights' => $cid !== '' ? ($insightsByCampaign[$cid] ?? null) : null,
+                ]);
+            }
+
             $tokenUser = null;
             try {
                 $me = $client->get('/me', ['fields' => 'id,name']);
@@ -337,12 +377,223 @@ class MetaAdsApiController extends Controller
                 'adAccountName' => $account['name'] ?? null,
                 'adAccountNumericId' => $account['account_id'] ?? null,
                 'amountSpent' => $account['amount_spent'] ?? null,
-                'campaignsTotal' => (int) ($resp['summary']['total_count'] ?? count($resp['data'] ?? [])),
+                'campaignsTotal' => (int) ($resp['summary']['total_count'] ?? count($campaignsOut)),
                 'tokenUser' => $tokenUser,
-                'campaigns' => $resp['data'] ?? [],
+                'datePreset' => $datePreset,
+                'campaigns' => $campaignsOut,
             ]);
         } catch (Throwable $e) {
             report($e);
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+    }
+
+    /**
+     * Conjuntos de anúncios da conta com métricas do período (nível adset).
+     *
+     * Query: {@code datePreset} (ex. last_30d), {@code limit} (máx. 200).
+     */
+    public function adsets(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        try {
+            $conn = $this->requireConnection($request);
+            $adAccountId = $this->requireAdAccountId($request, $conn);
+            $client = $this->clientFromConnection($conn);
+            $this->assertTokenHasAdsPermissions($client);
+            $this->assertAdAccountLinkedToBusiness($client, $adAccountId);
+
+            $datePreset = trim((string) $request->query('datePreset', 'last_30d'));
+            if ($datePreset === '') {
+                $datePreset = 'last_30d';
+            }
+
+            $limit = (int) $request->query('limit', 200);
+            $limit = max(1, min(200, $limit));
+            $act = $this->normalizeAct($adAccountId);
+
+            $account = $client->get('/'.$act, [
+                'fields' => 'id,name,account_id',
+            ]);
+
+            $adsetsResp = $client->get('/'.$act.'/adsets', [
+                'fields' => 'id,name,status,effective_status,campaign_id,daily_budget,lifetime_budget,optimization_goal,billing_event,created_time,updated_time',
+                'limit' => $limit,
+                'summary' => 'total_count',
+            ]);
+            $adsets = is_array($adsetsResp['data'] ?? null) ? $adsetsResp['data'] : [];
+
+            $insightsResp = $client->get('/'.$act.'/insights', [
+                'level' => 'adset',
+                'date_preset' => $datePreset,
+                'fields' => 'adset_id,impressions,clicks,spend,reach,ctr,cpc,cpm,actions,cost_per_action_type',
+                'limit' => 500,
+            ]);
+            $insightRows = is_array($insightsResp['data'] ?? null) ? $insightsResp['data'] : [];
+
+            $insightsByAdset = [];
+            foreach ($insightRows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $id = trim((string) ($row['adset_id'] ?? ''));
+                if ($id !== '') {
+                    $insightsByAdset[$id] = $row;
+                }
+            }
+
+            $out = [];
+            foreach ($adsets as $a) {
+                if (! is_array($a)) {
+                    continue;
+                }
+                $id = trim((string) ($a['id'] ?? ''));
+                $out[] = [
+                    'id' => $id,
+                    'name' => $a['name'] ?? null,
+                    'status' => $a['status'] ?? null,
+                    'effective_status' => $a['effective_status'] ?? null,
+                    'campaign_id' => $a['campaign_id'] ?? null,
+                    'budget' => $this->parseBudget($a, 'adset'),
+                    'optimization_goal' => $a['optimization_goal'] ?? null,
+                    'billing_event' => $a['billing_event'] ?? null,
+                    'created_time' => $a['created_time'] ?? null,
+                    'updated_time' => $a['updated_time'] ?? null,
+                    'insights' => $id !== '' ? ($insightsByAdset[$id] ?? null) : null,
+                ];
+            }
+
+            return response()->json([
+                'ok' => true,
+                'adAccountId' => $adAccountId,
+                'adAccountName' => $account['name'] ?? null,
+                'datePreset' => $datePreset,
+                'adsetsTotal' => (int) ($adsetsResp['summary']['total_count'] ?? count($out)),
+                'adsets' => $out,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+
+            return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
+        }
+    }
+
+    /**
+     * Anúncios da conta com métricas do período (nível ad).
+     *
+     * Query: {@code datePreset} (ex. last_30d), {@code limit} (máx. 200).
+     */
+    public function ads(Request $request): JsonResponse
+    {
+        if (! (bool) config('meta_ads.enabled')) {
+            return response()->json([
+                'ok' => false,
+                'paused' => true,
+                'error' => 'Integração com Meta Ads está pausada no momento.',
+            ], 503);
+        }
+
+        try {
+            $conn = $this->requireConnection($request);
+            $adAccountId = $this->requireAdAccountId($request, $conn);
+            $client = $this->clientFromConnection($conn);
+            $this->assertTokenHasAdsPermissions($client);
+            $this->assertAdAccountLinkedToBusiness($client, $adAccountId);
+
+            $datePreset = trim((string) $request->query('datePreset', 'last_30d'));
+            if ($datePreset === '') {
+                $datePreset = 'last_30d';
+            }
+
+            $limit = (int) $request->query('limit', 200);
+            $limit = max(1, min(200, $limit));
+            $act = $this->normalizeAct($adAccountId);
+
+            $account = $client->get('/'.$act, [
+                'fields' => 'id,name,account_id',
+            ]);
+
+            $adsResp = $client->get('/'.$act.'/ads', [
+                'fields' => 'id,name,status,effective_status,campaign_id,adset_id,created_time,updated_time',
+                'limit' => $limit,
+                'summary' => 'total_count',
+            ]);
+            $ads = is_array($adsResp['data'] ?? null) ? $adsResp['data'] : [];
+
+            $insightsResp = $client->get('/'.$act.'/insights', [
+                'level' => 'ad',
+                'date_preset' => $datePreset,
+                'fields' => 'ad_id,impressions,clicks,spend,reach,ctr,cpc,cpm,actions,cost_per_action_type',
+                'limit' => 500,
+            ]);
+            $insightRows = is_array($insightsResp['data'] ?? null) ? $insightsResp['data'] : [];
+
+            $insightsByAd = [];
+            foreach ($insightRows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $id = trim((string) ($row['ad_id'] ?? ''));
+                if ($id !== '') {
+                    $insightsByAd[$id] = $row;
+                }
+            }
+
+            $adsetsResp = $client->get('/'.$act.'/adsets', [
+                'fields' => 'id,daily_budget,lifetime_budget',
+                'limit' => 200,
+            ]);
+            $adsetRows = is_array($adsetsResp['data'] ?? null) ? $adsetsResp['data'] : [];
+            $budgetByAdset = [];
+            foreach ($adsetRows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $adsetId = trim((string) ($row['id'] ?? ''));
+                if ($adsetId !== '') {
+                    $budgetByAdset[$adsetId] = $this->parseBudget($row, 'adset');
+                }
+            }
+
+            $out = [];
+            foreach ($ads as $a) {
+                if (! is_array($a)) {
+                    continue;
+                }
+                $id = trim((string) ($a['id'] ?? ''));
+                $adsetId = trim((string) ($a['adset_id'] ?? ''));
+                $out[] = [
+                    'id' => $id,
+                    'name' => $a['name'] ?? null,
+                    'status' => $a['status'] ?? null,
+                    'effective_status' => $a['effective_status'] ?? null,
+                    'campaign_id' => $a['campaign_id'] ?? null,
+                    'adset_id' => $adsetId !== '' ? $adsetId : null,
+                    'budget' => $adsetId !== '' ? ($budgetByAdset[$adsetId] ?? null) : null,
+                    'created_time' => $a['created_time'] ?? null,
+                    'updated_time' => $a['updated_time'] ?? null,
+                    'insights' => $id !== '' ? ($insightsByAd[$id] ?? null) : null,
+                ];
+            }
+
+            return response()->json([
+                'ok' => true,
+                'adAccountId' => $adAccountId,
+                'adAccountName' => $account['name'] ?? null,
+                'datePreset' => $datePreset,
+                'adsTotal' => (int) ($adsResp['summary']['total_count'] ?? count($out)),
+                'ads' => $out,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+
             return response()->json(MetaAdsClient::safeError($e), $e instanceof RuntimeException ? 400 : 500);
         }
     }

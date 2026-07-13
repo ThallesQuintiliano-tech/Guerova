@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Button, Card, CardBody, ListGroup, ListGroupItem } from 'reactstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -6,25 +6,83 @@ import { faCheck, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { getCampaignDisplayName, mockCampaignGenerationSteps } from './campaignBriefing';
 import { useAuth } from '../auth/AuthContext';
 
-const API_TIMEOUT_MS = 90_000;
+const API_TIMEOUT_MS = 120_000;
 const STEP_MS = 650;
+
+function friendlyFetchError(err) {
+  const msg = String(err?.message || '');
+  if (err?.name === 'AbortError' || msg.toLowerCase().includes('aborted')) {
+    return 'A geração demorou mais que o esperado. Verifique se o backend está ativo e tente novamente.';
+  }
+  if (msg === 'Failed to fetch' || msg.includes('NetworkError') || msg.includes('Load failed')) {
+    return (
+      'Não foi possível contactar o servidor. Confirme que o backend Laravel está a correr ' +
+      '(porta 8000) e que o frontend usa o proxy Vite (/api). Se estiver offline, inicie os dois serviços e tente de novo.'
+    );
+  }
+  return msg || 'Falha ao gerar pacote com IA.';
+}
 
 export default function BriefingGerando() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { apiFetch, isAuthenticated } = useAuth();
+  const { apiFetch, isAuthenticated, booting } = useAuth();
   const briefing = state?.briefing;
   const editCampaign = state?.editCampaign;
   const title = getCampaignDisplayName(briefing);
+
+  const apiFetchRef = useRef(apiFetch);
+  const navigateRef = useRef(navigate);
+  const editCampaignRef = useRef(editCampaign);
+  apiFetchRef.current = apiFetch;
+  navigateRef.current = navigate;
+  editCampaignRef.current = editCampaign;
+
+  const briefingKey = useMemo(() => {
+    if (!briefing) return '';
+    try {
+      return JSON.stringify(briefing);
+    } catch {
+      return String(Date.now());
+    }
+  }, [briefing]);
 
   const [doneCount, setDoneCount] = useState(0);
   const [error, setError] = useState(null);
   const [waitingApi, setWaitingApi] = useState(true);
   const generationRef = useRef(0);
 
+  const runGeneration = async (genId, { signal } = {}) => {
+    const r = await apiFetchRef.current('/api/campaigns/generate-pack', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ briefing }),
+      signal,
+    });
+    const j = await r.json().catch(() => ({}));
+
+    if (generationRef.current !== genId) {
+      return null;
+    }
+
+    if (!r.ok || !j?.ok) {
+      throw new Error(j?.error || j?.warning || `Falha ao gerar pacote (HTTP ${r.status}).`);
+    }
+
+    if (!j?.pack || typeof j.pack !== 'object') {
+      throw new Error('Resposta sem pacote de campanha. Tente novamente.');
+    }
+
+    return j;
+  };
+
   useEffect(() => {
     if (!briefing) {
-      navigate('/leadmaster/campanha/briefing', { replace: true });
+      navigateRef.current('/leadmaster/campanha/briefing', { replace: true });
+      return undefined;
+    }
+
+    if (booting) {
       return undefined;
     }
 
@@ -50,75 +108,61 @@ export default function BriefingGerando() {
 
     const controller = new AbortController();
     const apiTimer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+    let ignore = false;
 
     (async () => {
       try {
-        const r = await apiFetch('/api/campaigns/generate-pack', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ briefing }),
-          signal: controller.signal,
-        });
-        const j = await r.json().catch(() => ({}));
-
-        if (generationRef.current !== genId) {
+        const j = await runGeneration(genId, { signal: controller.signal });
+        if (!j || ignore) {
           return;
-        }
-
-        if (!r.ok || !j?.ok) {
-          throw new Error(j?.error || j?.warning || `Falha ao gerar pacote (HTTP ${r.status}).`);
-        }
-
-        if (!j?.pack || typeof j.pack !== 'object') {
-          throw new Error('Resposta sem pacote de campanha. Tente novamente.');
         }
 
         setWaitingApi(false);
 
         const finishDelay = Math.max(400, STEP_MS * (steps.length + 1) - STEP_MS * steps.length);
         setTimeout(() => {
-          if (generationRef.current !== genId) {
+          if (generationRef.current !== genId || ignore) {
             return;
           }
-          navigate('/leadmaster/campanha/pacote', {
+          navigateRef.current('/leadmaster/campanha/pacote', {
             state: {
               briefing,
               savedPack: j.pack,
-                packSource: j.source,
-                packModel: j.model || null,
-                packWarning: j.warning || null,
-              savedCampaign: editCampaign
-                ? { id: editCampaign.id, name: editCampaign.name, status: editCampaign.status }
+              packSource: j.source,
+              packModel: j.model || null,
+              packWarning: j.warning || null,
+              savedCampaign: editCampaignRef.current
+                ? {
+                    id: editCampaignRef.current.id,
+                    name: editCampaignRef.current.name,
+                    status: editCampaignRef.current.status,
+                  }
                 : null,
             },
           });
         }, finishDelay);
       } catch (e) {
-        if (generationRef.current !== genId) {
+        if (ignore || generationRef.current !== genId) {
           return;
         }
         setWaitingApi(false);
-        if (e?.name === 'AbortError') {
-          setError(
-            'A IA demorou mais de 90 segundos. Verifique GEMINI_API_KEY, quota no Google AI Studio, ou tente de novo.'
-          );
-        } else {
-          setError(e?.message || 'Falha ao gerar pacote com IA.');
-        }
+        setError(friendlyFetchError(e));
       } finally {
         clearTimeout(apiTimer);
       }
     })();
 
     return () => {
+      ignore = true;
       stepTimers.forEach(clearTimeout);
       clearTimeout(apiTimer);
-      controller.abort();
+      // Não abortar o fetch aqui: remount do React Strict Mode e troca de apiFetch
+      // cancelavam pedidos válidos e geravam "Failed to fetch".
     };
-  }, [briefing, editCampaign, isAuthenticated, apiFetch, navigate]);
+  }, [briefingKey, isAuthenticated, booting]);
 
   const retry = async () => {
-    if (!briefing || !isAuthenticated) {
+    if (!briefing || !isAuthenticated || booting) {
       return;
     }
     setError(null);
@@ -128,32 +172,30 @@ export default function BriefingGerando() {
     const controller = new AbortController();
     const apiTimer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     try {
-      const r = await apiFetch('/api/campaigns/generate-pack', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ briefing }),
-        signal: controller.signal,
+      const j = await runGeneration(genId, { signal: controller.signal });
+      if (!j || generationRef.current !== genId) {
+        return;
+      }
+      navigateRef.current('/leadmaster/campanha/pacote', {
+        state: {
+          briefing,
+          savedPack: j.pack,
+          packSource: j.source,
+          packModel: j.model || null,
+          packWarning: j.warning || null,
+          savedCampaign: editCampaignRef.current
+            ? {
+                id: editCampaignRef.current.id,
+                name: editCampaignRef.current.name,
+                status: editCampaignRef.current.status,
+              }
+            : null,
+        },
       });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j?.ok || !j?.pack) {
-        throw new Error(j?.error || j?.warning || 'Falha ao gerar pacote.');
-      }
-      if (generationRef.current === genId) {
-        navigate('/leadmaster/campanha/pacote', {
-          state: {
-            briefing,
-            savedPack: j.pack,
-                packSource: j.source,
-                packModel: j.model || null,
-                packWarning: j.warning || null,
-            savedCampaign: editCampaign
-              ? { id: editCampaign.id, name: editCampaign.name, status: editCampaign.status }
-              : null,
-          },
-        });
-      }
     } catch (e) {
-      setError(e?.name === 'AbortError' ? 'Tempo esgotado. Tente de novo.' : e?.message || 'Falha.');
+      if (generationRef.current === genId) {
+        setError(friendlyFetchError(e));
+      }
     } finally {
       setWaitingApi(false);
       clearTimeout(apiTimer);
@@ -180,9 +222,15 @@ export default function BriefingGerando() {
             Imóvel: <strong>{title}</strong>
           </p>
 
-          {waitingApi && allStepsDone && !error && (
+          {booting && (
+            <Alert color="light" className="text-start small py-2 border">
+              A preparar sessão…
+            </Alert>
+          )}
+
+          {waitingApi && allStepsDone && !error && !booting && (
             <Alert color="info" className="text-start small py-2">
-              Passos concluídos — <strong>aguardando resposta da IA</strong> (pode levar até 1 minuto)…
+              Passos concluídos — <strong>aguardando resposta da IA</strong> (pode levar até 2 minutos)…
             </Alert>
           )}
 
@@ -190,7 +238,7 @@ export default function BriefingGerando() {
             <Alert color="danger" className="text-start small">
               {error}
               <div className="mt-2 d-flex flex-wrap gap-2">
-                <Button color="primary" size="sm" type="button" onClick={retry} disabled={waitingApi}>
+                <Button color="primary" size="sm" type="button" onClick={retry} disabled={waitingApi || booting}>
                   Tentar de novo
                 </Button>
                 <Button

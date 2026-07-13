@@ -85,6 +85,8 @@ Route::middleware(['auth:sanctum', 'account.resolve', 'throttle:30,1'])->group(f
     Route::get('/meta-ads/ad-accounts', [MetaAdsApiController::class, 'adAccounts'])->name('metaAds.adAccounts');
     Route::post('/meta-ads/ad-accounts/probe', [MetaAdsApiController::class, 'probeAdAccounts'])->name('metaAds.adAccounts.probe');
     Route::get('/meta-ads/campaigns', [MetaAdsApiController::class, 'campaigns'])->name('metaAds.campaigns');
+    Route::get('/meta-ads/adsets', [MetaAdsApiController::class, 'adsets'])->name('metaAds.adsets');
+    Route::get('/meta-ads/ads', [MetaAdsApiController::class, 'ads'])->name('metaAds.ads');
     Route::get('/meta-ads/report', [MetaAdsApiController::class, 'report'])->name('metaAds.report');
     Route::get('/meta-ads/campaigns/{campaignId}/insights', [MetaAdsApiController::class, 'campaignInsights'])->name('metaAds.campaignInsights');
     Route::get('/meta-ads/campaigns/{campaignId}/ads', [MetaAdsApiController::class, 'campaignAds'])->name('metaAds.campaignAds');

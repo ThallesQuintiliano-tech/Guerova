@@ -200,6 +200,108 @@ $lm-accent: #6366f1;
   }
 }
 
+.lm-bi-dashboard {
+  .lm-bi-goal-card {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #fff;
+    border: none;
+
+    .text-muted {
+      color: rgba(255, 255, 255, 0.65) !important;
+    }
+
+    .text-success {
+      color: #4ade80 !important;
+    }
+  }
+
+  .lm-bi-goal-pct {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+    color: #38bdf8;
+  }
+
+  .lm-bi-progress-track {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+  }
+
+  .lm-bi-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2563eb, #38bdf8);
+    transition: width 0.4s ease;
+  }
+
+  .lm-bi-kpi-row {
+    align-items: flex-start;
+  }
+
+  .lm-bi-kpi {
+    height: auto;
+  }
+
+  .lm-bi-kpi-body {
+    padding: 0.65rem 0.85rem;
+  }
+
+  .lm-bi-kpi h3 {
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  .lm-bi-funnel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+  }
+
+  .lm-bi-funnel-step {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .lm-bi-funnel-bar-wrap {
+    min-width: 120px;
+    transition: width 0.3s ease;
+  }
+
+  .lm-bi-funnel-bar {
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.65rem 1rem;
+    text-align: center;
+    font-size: 0.8rem;
+  }
+
+  .lm-bi-funnel-arrow {
+    color: #94a3b8;
+    font-size: 0.65rem;
+    line-height: 1;
+    margin: 0.1rem 0;
+  }
+
+  .lm-bi-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+}
+
+[data-bs-theme='dark'] {
+  .lm-bi-dashboard .lm-bi-funnel-bar {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  }
+}
+
 .lm-kanban-col {
   min-width: 240px;
   background: #f1f5f9;
@@ -368,5 +470,114 @@ $lm-accent: #6366f1;
 
   .lm-score-gauge__face {
     border-color: var(--bs-body-bg);
+  }
+}
+
+/* Abas estilo Meta Ads Manager (Campanhas / Conjuntos / Anúncios) */
+.lm-meta-hierarchy {
+  margin-top: 0.5rem;
+}
+
+.lm-meta-tabs {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+.lm-meta-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  background: #e4e6eb;
+  color: #1c1e21;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover:not(.lm-meta-tab--active) {
+    background: #d8dadf;
+  }
+
+  &--active {
+    background: #fff;
+    color: #1877f2;
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    opacity: 0.85;
+  }
+
+  &--active &__icon {
+    color: #1877f2;
+    opacity: 1;
+  }
+}
+
+.lm-meta-panel {
+  background: #fff;
+  border: 1px solid #e4e6eb;
+  border-radius: 0 8px 8px 8px;
+  overflow: hidden;
+
+  &__toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #e4e6eb;
+    background: #fafafa;
+  }
+}
+
+.lm-meta-table {
+  thead th {
+    background: #f0f2f5;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #65676b;
+    border-bottom: 1px solid #e4e6eb;
+    white-space: nowrap;
+  }
+
+  tbody td {
+    border-bottom: 1px solid #f0f2f5;
+  }
+}
+
+[data-bs-theme='dark'] {
+  .lm-meta-tab {
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+
+    &:hover:not(.lm-meta-tab--active) {
+      background: var(--bs-secondary-bg);
+    }
+
+    &--active {
+      background: var(--bs-body-bg);
+      color: #60a5fa;
+    }
+  }
+
+  .lm-meta-panel {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+
+    &__toolbar {
+      background: var(--bs-tertiary-bg);
+      border-color: var(--bs-border-color);
+    }
+  }
+
+  .lm-meta-table thead th {
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-secondary-color);
+    border-color: var(--bs-border-color);
   }
 }

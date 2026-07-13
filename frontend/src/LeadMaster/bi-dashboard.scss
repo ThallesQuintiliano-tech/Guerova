@@ -1,0 +1,568 @@
+.four-bi-dashboard {
+  --four-bg: #eef1f6;
+  --four-card: #ffffff;
+  --four-border: #e2e8f0;
+  --four-text: #0f172a;
+  --four-muted: #64748b;
+  --four-primary: #1d4ed8;
+  --four-primary-light: #3b82f6;
+  --four-success: #16a34a;
+  --four-navy: #0f172a;
+
+  background: var(--four-bg);
+  margin: -1.5rem;
+  padding: 1.25rem 1.5rem 2rem;
+  min-height: 100%;
+
+  .four-bi-header {
+    margin-bottom: 1rem;
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--four-text);
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+  }
+
+  .four-bi-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    background: var(--four-card);
+    border: 1px solid var(--four-border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+
+    label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--four-muted);
+      margin-bottom: 0.2rem;
+      display: block;
+    }
+
+    select {
+      font-size: 0.82rem;
+      border: 1px solid var(--four-border);
+      border-radius: 6px;
+      padding: 0.35rem 0.5rem;
+      min-width: 130px;
+      background: #fff;
+      color: var(--four-text);
+    }
+  }
+
+  .four-bi-panel {
+    background: var(--four-card);
+    border: 1px solid var(--four-border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+
+    &--stretch {
+      height: 100%;
+    }
+
+    &--compact {
+      padding: 0.85rem 1rem;
+    }
+  }
+
+  .four-bi-panel-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--four-text);
+    margin: 0 0 0.65rem;
+  }
+
+  .four-bi-goal {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border: none;
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+    color: #fff;
+    margin-bottom: 1rem;
+
+    .four-bi-goal-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.7;
+      margin-bottom: 0.35rem;
+    }
+
+    .four-bi-goal-pct {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: #38bdf8;
+      line-height: 1;
+    }
+
+    .four-bi-goal-sub {
+      font-size: 0.8rem;
+      opacity: 0.75;
+    }
+
+    .four-bi-progress-track {
+      height: 8px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.15);
+      overflow: hidden;
+      margin: 0.5rem 0 0.35rem;
+    }
+
+    .four-bi-progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #2563eb, #38bdf8);
+    }
+
+    .four-bi-progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      opacity: 0.65;
+    }
+
+    .four-bi-goal-right {
+      text-align: right;
+      font-size: 0.82rem;
+
+      .realizado {
+        font-size: 1rem;
+        font-weight: 700;
+      }
+
+      .delta {
+        color: #4ade80;
+        font-size: 0.78rem;
+      }
+    }
+  }
+
+  .four-bi-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+
+    @media (max-width: 1200px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .four-bi-kpi {
+    background: var(--four-card);
+    border: 1px solid var(--four-border);
+    border-radius: 10px;
+    padding: 0.65rem 0.8rem;
+
+    .label {
+      font-size: 0.72rem;
+      color: var(--four-muted);
+      margin-bottom: 0.15rem;
+    }
+
+    .value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--four-text);
+      line-height: 1.2;
+    }
+
+    .delta {
+      font-size: 0.72rem;
+      margin-top: 0.15rem;
+
+      &.up {
+        color: var(--four-success);
+      }
+
+      &.neutral {
+        color: var(--four-muted);
+      }
+    }
+  }
+
+  .four-bi-funnel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .four-bi-funnel-step {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .four-bi-funnel-bar-wrap {
+    transition: width 0.25s ease;
+  }
+
+  .four-bi-funnel-bar {
+    background: linear-gradient(135deg, #1d4ed8, #4f46e5);
+    color: #fff;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    font-size: 0.75rem;
+    line-height: 1.35;
+
+    .count {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .stage {
+      opacity: 0.85;
+      font-size: 0.7rem;
+    }
+
+    .conv {
+      font-size: 0.68rem;
+      opacity: 0.9;
+      margin-top: 0.1rem;
+    }
+  }
+
+  .four-bi-funnel-arrow {
+    color: #94a3b8;
+    font-size: 0.55rem;
+    line-height: 1;
+    margin: 0.08rem 0;
+  }
+
+  .four-bi-funnel-footer {
+    font-size: 0.72rem;
+    color: var(--four-muted);
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid var(--four-border);
+  }
+
+  .four-bi-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--four-muted);
+    margin-bottom: 0.5rem;
+
+    span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+  }
+
+  .four-bi-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .four-bi-map-wrap {
+    position: relative;
+  }
+
+  .four-bi-map-tooltip {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.92);
+    color: #fff;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .four-bi-donut-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .four-bi-donut-chart {
+    width: 130px;
+    height: 130px;
+    flex-shrink: 0;
+  }
+
+  .four-bi-donut-legend {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.78rem;
+    flex: 1;
+    align-self: center;
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #f1f5f9;
+
+      &:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+    }
+  }
+
+  .four-bi-tabs {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+
+    button {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.35rem 0.7rem;
+      border-radius: 6px;
+      border: 1px solid var(--four-border);
+      background: #fff;
+      color: var(--four-muted);
+      cursor: pointer;
+
+      &.active {
+        background: var(--four-primary);
+        border-color: var(--four-primary);
+        color: #fff;
+      }
+    }
+  }
+
+  .four-bi-table-wrap {
+    max-height: 420px;
+    overflow: auto;
+    border: 1px solid var(--four-border);
+    border-radius: 8px;
+    margin-top: 0.75rem;
+  }
+
+  .four-bi-table {
+    width: 100%;
+    font-size: 0.72rem;
+    margin: 0;
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      color: var(--four-muted);
+      font-weight: 600;
+      padding: 0.5rem 0.6rem;
+      border-bottom: 1px solid var(--four-border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.45rem 0.6rem;
+      border-bottom: 1px solid #f1f5f9;
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: #f8fafc;
+    }
+  }
+
+  .four-bi-level {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  .four-bi-chart-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--four-border);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+  }
+
+  .four-bi-states-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .state-item {
+      background: #f8fafc;
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.78rem;
+
+      .uf {
+        font-weight: 700;
+        color: var(--four-primary);
+      }
+
+      .val {
+        color: var(--four-text);
+        font-weight: 600;
+      }
+    }
+  }
+
+  .four-bi-traffic-total {
+    font-size: 0.78rem;
+    color: var(--four-muted);
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--four-border);
+    margin-top: 0.75rem;
+  }
+
+  .four-bi-subtitle {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--four-text);
+    margin: 1.25rem 0 0.65rem;
+  }
+
+  .four-bi-traffic-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #1e40af 100%);
+    border-radius: 12px;
+    padding: 1.25rem 1.35rem;
+    margin-bottom: 1rem;
+    color: #fff;
+  }
+
+  .four-bi-traffic-hero__stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+
+    @media (max-width: 576px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .four-bi-traffic-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 1rem 1.1rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+
+    &--spend {
+      border-left: 4px solid #60a5fa;
+    }
+
+    &--revenue {
+      border-left: 4px solid #4ade80;
+    }
+
+    &__label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    &__value {
+      font-size: clamp(1.75rem, 4vw, 2.35rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    &--spend &__value {
+      color: #93c5fd;
+    }
+
+    &--revenue &__value {
+      color: #86efac;
+    }
+
+    &__hint {
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.55);
+      margin-top: 0.15rem;
+    }
+  }
+
+  .four-bi-traffic-roi {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
+
+    strong {
+      color: #fbbf24;
+      font-weight: 800;
+    }
+  }
+
+  .four-bi-traffic-summary-chart {
+    background: #f8fafc;
+    border: 1px solid var(--four-border);
+    border-radius: 10px;
+    padding: 0.85rem 0.75rem 0.5rem;
+    margin-bottom: 0.5rem;
+
+    &__title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--four-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 0.35rem;
+      padding-left: 0.25rem;
+    }
+  }
+}
+
+[data-bs-theme='dark'] {
+  .four-bi-dashboard {
+    --four-bg: var(--bs-body-bg);
+    --four-card: var(--bs-body-bg);
+    --four-border: var(--bs-border-color);
+    --four-text: var(--bs-body-color);
+    --four-muted: var(--bs-secondary-color);
+
+    .four-bi-filters select {
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+    }
+
+    .four-bi-table th {
+      background: var(--bs-tertiary-bg);
+    }
+
+    .four-bi-traffic-summary-chart {
+      background: var(--bs-tertiary-bg);
+    }
+  }
+}

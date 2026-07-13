@@ -4,14 +4,9 @@ import { Card, CardBody, CardTitle, Table, Badge, Button, Alert, Spinner, FormGr
 import { mockCampaignsAdsManager } from './mockData';
 import { useGoogleAdsCampaigns } from './useGoogleAdsCampaigns';
 import { useInternalCampaigns } from './useInternalCampaigns';
-import { useMetaAdsCampaigns } from './useMetaAdsCampaigns';
+import { useMetaAdsHierarchy } from './useMetaAdsHierarchy';
 import { useMetaAdsAdAccountPicker } from './useMetaAdsAdAccountPicker';
-import {
-  formatMetaInteger,
-  formatMetaMoney,
-  formatMetaPercent,
-  parseMetaCampaignInsights,
-} from './metaAdsInsights';
+import MetaAdsHierarchyTabs from './MetaAdsHierarchyTabs';
 import { featureGoogle } from '../config/leadMasterFeatures';
 
 function statusBadgeColor(status) {
@@ -41,20 +36,24 @@ export default function Campanhas() {
     savingDefault: savingMetaActDefault,
     connected: metaPickerConnected,
   } = useMetaAdsAdAccountPicker();
+  const [metaTab, setMetaTab] = useState('campaigns');
   const {
     loading: loadingMeta,
     error: errorMeta,
     connected: metaConnected,
     adAccountId: metaAdAccountId,
     pageId: metaPageId,
-    metaCampaigns,
-    metaAccountName,
-    metaCampaignsTotal,
-    metaTokenUser,
-    metaInsightsByCampaignId,
-    insightsLoading,
+    campaigns: metaCampaigns,
+    campaignsTotal: metaCampaignsTotal,
+    adsets: metaAdsets,
+    adsetsTotal: metaAdsetsTotal,
+    ads: metaAds,
+    adsTotal: metaAdsTotal,
+    adAccountName: metaAccountName,
+    tokenUser: metaTokenUser,
+    datePreset: metaDatePreset,
     refetch: refetchMeta,
-  } = useMetaAdsCampaigns(metaSelectedAct);
+  } = useMetaAdsHierarchy(metaSelectedAct, metaTab);
   const {
     loading: loadingInternal,
     error: errorInternal,
@@ -402,7 +401,19 @@ export default function Campanhas() {
               {metaCampaignsTotal != null ? (
                 <>
                   {' '}
-                  · <strong>{metaCampaignsTotal}</strong> campanha(s) na API
+                  · <strong>{metaCampaignsTotal}</strong> campanha(s)
+                </>
+              ) : null}
+              {metaAdsetsTotal != null && metaTab === 'adsets' ? (
+                <>
+                  {' '}
+                  · <strong>{metaAdsetsTotal}</strong> conjunto(s)
+                </>
+              ) : null}
+              {metaAdsTotal != null && metaTab === 'ads' ? (
+                <>
+                  {' '}
+                  · <strong>{metaAdsTotal}</strong> anúncio(s)
                 </>
               ) : null}
               {metaTokenUser?.name ? (
@@ -421,7 +432,7 @@ export default function Campanhas() {
           )}
           {loadingMeta && (
             <div className="small text-muted">
-              <Spinner size="sm" className="me-1" /> A carregar campanhas da Meta…
+              <Spinner size="sm" className="me-1" /> A carregar dados da Meta…
             </div>
           )}
           {errorMeta && (
@@ -437,7 +448,12 @@ export default function Campanhas() {
               </div>
             </Alert>
           )}
-          {!loadingMeta && !errorMeta && metaConnected && metaAdAccountId && metaCampaigns.length === 0 && (
+          {!loadingMeta &&
+            !errorMeta &&
+            metaConnected &&
+            metaAdAccountId &&
+            metaTab === 'campaigns' &&
+            metaCampaigns.length === 0 && (
             <Alert color="warning" className="py-2 small mb-0 mt-2">
               A Meta confirma <strong>{metaCampaignsTotal ?? 0} campanha(s)</strong> na conta{' '}
               <strong>{metaAccountName || metaAdAccountId}</strong> (<code>{metaAdAccountId}</code>) para o utilizador do
@@ -449,90 +465,16 @@ export default function Campanhas() {
               <code>ads_read</code> + <code>ads_management</code>.
             </Alert>
           )}
-          {insightsLoading && metaCampaigns.length > 0 && (
-            <div className="small text-muted mt-2">
-              <Spinner size="sm" className="me-1" /> A carregar métricas (últimos 30 dias)…
-            </div>
-          )}
-          {!loadingMeta && !errorMeta && metaConnected && metaAdAccountId && metaCampaigns.length > 0 && (
-            <>
-              <Table responsive hover className="small align-middle mb-0 mt-2">
-                <thead>
-                  <tr>
-                    <th>Campanha</th>
-                    <th>Status</th>
-                    <th>Objetivo</th>
-                    <th className="text-end">Impressões</th>
-                    <th className="text-end">Cliques</th>
-                    <th className="text-end">Gasto</th>
-                    <th className="text-end">Conversas</th>
-                    <th className="text-end">Custo / conversa</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metaCampaigns.map((c) => {
-                    const m = parseMetaCampaignInsights(metaInsightsByCampaignId[c.id]);
-                    return (
-                      <tr key={c.id}>
-                        <td className="fw-semibold">{c.name || '—'}</td>
-                        <td>
-                          <Badge color={statusBadgeColor(c.effective_status || c.status)} pill>
-                            {c.effective_status || c.status || '—'}
-                          </Badge>
-                        </td>
-                        <td className="text-muted">{c.objective || '—'}</td>
-                        <td className="text-end">{m ? formatMetaInteger(m.impressions) : insightsLoading ? '…' : '—'}</td>
-                        <td className="text-end">{m ? formatMetaInteger(m.clicks) : insightsLoading ? '…' : '—'}</td>
-                        <td className="text-end">{m ? formatMetaMoney(m.spend) : insightsLoading ? '…' : '—'}</td>
-                        <td className="text-end">{m ? formatMetaInteger(m.conversations) : insightsLoading ? '…' : '—'}</td>
-                        <td className="text-end">
-                          {m ? formatMetaMoney(m.costPerConversation) : insightsLoading ? '…' : '—'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </Table>
-              {metaCampaigns.map((c) => {
-                const m = parseMetaCampaignInsights(metaInsightsByCampaignId[c.id]);
-                if (!m) return null;
-                return (
-                  <Card key={`${c.id}-metrics`} className="mt-3 border-0 bg-light">
-                    <CardBody className="py-3">
-                      <CardTitle tag="h6" className="mb-2">
-                        {c.name} — últimos 30 dias ({m.dateStart} → {m.dateStop})
-                      </CardTitle>
-                      <div className="row g-2 small">
-                        <div className="col-6 col-md-3">
-                          <div className="text-muted">Alcance</div>
-                          <div className="fw-semibold">{formatMetaInteger(m.reach)}</div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="text-muted">CTR</div>
-                          <div className="fw-semibold">{formatMetaPercent(m.ctr)}</div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="text-muted">CPC</div>
-                          <div className="fw-semibold">{formatMetaMoney(m.cpc)}</div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="text-muted">CPM</div>
-                          <div className="fw-semibold">{formatMetaMoney(m.cpm)}</div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="text-muted">Cliques na ligação</div>
-                          <div className="fw-semibold">{formatMetaInteger(m.linkClicks)}</div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="text-muted">ID campanha</div>
-                          <div className="fw-semibold text-monospace">{c.id}</div>
-                        </div>
-                      </div>
-                    </CardBody>
-                  </Card>
-                );
-              })}
-            </>
+          {!loadingMeta && !errorMeta && metaConnected && metaAdAccountId && (
+            <MetaAdsHierarchyTabs
+              campaigns={metaCampaigns}
+              adsets={metaAdsets}
+              ads={metaAds}
+              loading={loadingMeta}
+              datePreset={metaDatePreset}
+              activeTab={metaTab}
+              onTabChange={setMetaTab}
+            />
           )}
         </CardBody>
       </Card>
